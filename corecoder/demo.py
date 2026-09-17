@@ -43,10 +43,8 @@ class ScriptedLLM:
         self.total_completion_tokens += len(resp.content.split())
         return resp
 
-_TASK = (
-    "Write a Python function `fib(n)` in fib.py returning the nth Fibonacci "
-    "number, add a pytest file, then run the tests."
-)
+
+_TASK = "Write a Python function `fib(n)` in fib.py returning the nth Fibonacci number, add a pytest file, then run the tests."
 
 
 def _script(workdir: Path) -> list[LLMResponse]:
@@ -59,26 +57,25 @@ def _script(workdir: Path) -> list[LLMResponse]:
         "        a, b = b, a + b\n"
         "    return b\n"
     )
-    test_py = (
-        "from fib import fib\n"
-        "\n"
-        "def test_fib():\n"
-        "    assert fib(0) == 0\n"
-        "    assert fib(1) == 1\n"
-        "    assert fib(10) == 55\n"
-    )
+    test_py = "from fib import fib\n\ndef test_fib():\n    assert fib(0) == 0\n    assert fib(1) == 1\n    assert fib(10) == 55\n"
     return [
         LLMResponse(
             content="I'll write fib.py with an iterative implementation.",
-            tool_calls=[ToolCall(id="c1", name="write_file", arguments={"file_path": str(workdir / "fib.py"), "content": fib_py})],
+            tool_calls=[
+                ToolCall(id="c1", name="write_file", arguments={"file_path": str(workdir / "fib.py"), "content": fib_py})
+            ],
         ),
         LLMResponse(
             content="Now the test file covering the base cases and fib(10).",
-            tool_calls=[ToolCall(id="c2", name="write_file", arguments={"file_path": str(workdir / "test_fib.py"), "content": test_py})],
+            tool_calls=[
+                ToolCall(id="c2", name="write_file", arguments={"file_path": str(workdir / "test_fib.py"), "content": test_py})
+            ],
         ),
         LLMResponse(
             content="Running the tests.",
-            tool_calls=[ToolCall(id="c3", name="bash", arguments={"command": f"cd {workdir} && python -m pytest test_fib.py -q"})],
+            tool_calls=[
+                ToolCall(id="c3", name="bash", arguments={"command": f"cd {workdir} && python -m pytest test_fib.py -q"})
+            ],
         ),
         LLMResponse(
             content="All three assertions pass. `fib` is iterative, and the test covers the base cases plus fib(10) == 55."

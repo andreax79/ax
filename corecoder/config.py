@@ -38,12 +38,7 @@ class Config:
         # load .env if present (won't override existing env vars)
         _load_dotenv()
         # pick up common env vars automatically
-        api_key = (
-            os.getenv("CORECODER_API_KEY")
-            or os.getenv("OPENAI_API_KEY")
-            or os.getenv("DEEPSEEK_API_KEY")
-            or ""
-        )
+        api_key = os.getenv("CORECODER_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or ""
         return cls(
             model=os.getenv("CORECODER_MODEL", "gpt-5.5"),
             api_key=api_key,

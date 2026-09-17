@@ -7,10 +7,12 @@ from corecoder.llm import LLMResponse, ToolCall
 
 
 def test_scripted_llm_plays_turns_in_order():
-    llm = ScriptedLLM([
-        LLMResponse(content="first"),
-        LLMResponse(content="second", tool_calls=[ToolCall(id="c1", name="bash", arguments={"command": "true"})]),
-    ])
+    llm = ScriptedLLM(
+        [
+            LLMResponse(content="first"),
+            LLMResponse(content="second", tool_calls=[ToolCall(id="c1", name="bash", arguments={"command": "true"})]),
+        ]
+    )
 
     r1 = llm.chat(messages=[])
     r2 = llm.chat(messages=[])

@@ -8,16 +8,17 @@ from corecoder.tools import get_tool
 
 
 def _write_call(call_id, path):
-    return ToolCall(id=call_id, name="write_file",
-                    arguments={"file_path": str(path), "content": "x\n"})
+    return ToolCall(id=call_id, name="write_file", arguments={"file_path": str(path), "content": "x\n"})
 
 
 def _agent(tmp_path, permission):
     return Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
-            LLMResponse(content="here is the plan"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
+                LLMResponse(content="here is the plan"),
+            ]
+        ),
         tools=[get_tool("write_file")],
         permission=permission,
     )
@@ -54,10 +55,12 @@ def test_read_only_tools_still_run_in_plan_mode(tmp_path):
     f = tmp_path / "note.txt"
     f.write_text("hello", encoding="utf-8")
     agent = Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[ToolCall(id="c1", name="read_file", arguments={"file_path": str(f)})]),
-            LLMResponse(content="read it"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[ToolCall(id="c1", name="read_file", arguments={"file_path": str(f)})]),
+                LLMResponse(content="read it"),
+            ]
+        ),
         tools=[get_tool("read_file")],
     )
     agent.plan_mode = True

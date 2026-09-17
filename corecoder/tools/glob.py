@@ -3,17 +3,14 @@
 from pathlib import Path
 from typing import ClassVar
 
-from .base import Tool
 from ..gitignore import is_ignored, load_project_gitignore
+from .base import Tool
 
 
 class GlobTool(Tool):
     name = "glob"
     read_only = True
-    description = (
-        "Find files matching a glob pattern. "
-        "Supports ** for recursive matching (e.g. '**/*.py')."
-    )
+    description = "Find files matching a glob pattern. Supports ** for recursive matching (e.g. '**/*.py')."
     parameters: ClassVar[dict] = {
         "type": "object",
         "properties": {

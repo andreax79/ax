@@ -62,11 +62,15 @@ class MCPClient:
         self._write_lock = threading.Lock()
         threading.Thread(target=self._read_loop, daemon=True).start()
         try:
-            self._request("initialize", {
-                "protocolVersion": PROTOCOL_VERSION,
-                "capabilities": {},
-                "clientInfo": {"name": "corecoder", "version": __version__},
-            }, INIT_TIMEOUT)
+            self._request(
+                "initialize",
+                {
+                    "protocolVersion": PROTOCOL_VERSION,
+                    "capabilities": {},
+                    "clientInfo": {"name": "corecoder", "version": __version__},
+                },
+                INIT_TIMEOUT,
+            )
             self._notify("notifications/initialized")
             listed = self._request("tools/list", {}, INIT_TIMEOUT)
             self.tools = [MCPTool(self, t) for t in listed.get("tools", [])]
@@ -76,14 +80,8 @@ class MCPClient:
 
     def call_tool(self, tool_name: str, arguments: dict) -> str:
         """Run one remote tool and return its text content."""
-        result = self._request(
-            "tools/call", {"name": tool_name, "arguments": arguments}, self.call_timeout
-        )
-        text = "\n".join(
-            part.get("text", "")
-            for part in result.get("content", [])
-            if part.get("type") == "text"
-        )
+        result = self._request("tools/call", {"name": tool_name, "arguments": arguments}, self.call_timeout)
+        text = "\n".join(part.get("text", "") for part in result.get("content", []) if part.get("type") == "text")
         if result.get("isError"):
             raise MCPError(text or f"{tool_name} reported an error")
         return text or json.dumps(result)  # non-text content: hand the model the raw result

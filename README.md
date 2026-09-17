@@ -118,12 +118,12 @@ The whole of an agent fits in one sentence: hand the user's words to the model, 
 def chat(self, user_input):
     self.messages.append(user_input)
 
-    for _ in range(self.max_rounds):                   # bounded, so it can't run away
-        reply = self.llm.chat(self.messages, self.tools)   # ask the model what to do next
-        if not reply.tool_calls:                       # model wants no more tools
-            return reply.text                          #   -> done, hand the answer back
-        results = run_parallel(reply.tool_calls)       # tools requested -> run in parallel
-        self.messages += results                       # feed results back, loop again
+    for _ in range(self.max_rounds):  # bounded, so it can't run away
+        reply = self.llm.chat(self.messages, self.tools)  # ask the model what to do next
+        if not reply.tool_calls:  # model wants no more tools
+            return reply.text  #   -> done, hand the answer back
+        results = run_parallel(reply.tool_calls)  # tools requested -> run in parallel
+        self.messages += results  # feed results back, loop again
 
     return "(hit the round limit)"
 ```

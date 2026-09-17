@@ -91,11 +91,7 @@ class BashTool(Tool):
                 out += f"\n[exit code: {proc.returncode}]"
             # keep head + tail to preserve the most useful info
             if len(out) > 15_000:
-                out = (
-                    out[:6000]
-                    + f"\n\n... truncated ({len(out)} chars total) ...\n\n"
-                    + out[-3000:]
-                )
+                out = out[:6000] + f"\n\n... truncated ({len(out)} chars total) ...\n\n" + out[-3000:]
             return out.strip() or "(no output)"
         except subprocess.TimeoutExpired:
             return f"Error: timed out after {timeout}s"

@@ -14,7 +14,6 @@ import inspect
 
 from .context import ContextManager
 from .llm import LLM, ToolCall
-from .permissions import Permission
 from .project_guidance import load_project_guidance
 from .prompt import PLAN_MODE_PROMPT, system_prompt
 from .tools import get_tools
@@ -106,20 +105,24 @@ class Agent:
                     if result is None:
                         result = self._exec_tool(tc)
                         self._post_hooks(tc, result)
-                    self.messages.append({
-                        "role": "tool",
-                        "tool_call_id": tc.id,
-                        "content": result,
-                    })
+                    self.messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tc.id,
+                            "content": result,
+                        }
+                    )
                 else:
                     # parallel execution for multiple tool calls
                     results = self._exec_tools_parallel(resp.tool_calls, on_tool)
                     for tc, result in zip(resp.tool_calls, results):
-                        self.messages.append({
-                            "role": "tool",
-                            "tool_call_id": tc.id,
-                            "content": result,
-                        })
+                        self.messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tc.id,
+                                "content": result,
+                            }
+                        )
             except KeyboardInterrupt:
                 # Ctrl+C mid-execution would leave the assistant tool_calls
                 # message without replies, poisoning the next request; backfill
@@ -194,11 +197,7 @@ class Agent:
         # from pool workers would interleave several prompts on one terminal
         results = [self._pre_hooks(tc) or self._permit(tc) for tc in tool_calls]
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
-            futures = {
-                i: pool.submit(self._exec_tool, tc)
-                for i, tc in enumerate(tool_calls)
-                if results[i] is None
-            }
+            futures = {i: pool.submit(self._exec_tool, tc) for i, tc in enumerate(tool_calls) if results[i] is None}
             for i, future in futures.items():
                 results[i] = future.result()
         for i in futures:
@@ -215,11 +214,13 @@ class Agent:
         answered = {m.get("tool_call_id") for m in self.messages if m.get("role") == "tool"}
         for tc in tool_calls:
             if tc.id not in answered:
-                self.messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": "[interrupted]",
-                })
+                self.messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": "[interrupted]",
+                    }
+                )
 
     def reset(self):
         """Clear conversation history."""

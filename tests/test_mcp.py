@@ -75,8 +75,9 @@ def server_script(tmp_path):
 @pytest.fixture
 def mcp_config(tmp_path, server_script):
     cfg = tmp_path / "mcp.json"
-    cfg.write_text(json.dumps({"mcpServers": {"fake": {
-        "command": sys.executable, "args": [str(server_script)]}}}), encoding="utf-8")
+    cfg.write_text(
+        json.dumps({"mcpServers": {"fake": {"command": sys.executable, "args": [str(server_script)]}}}), encoding="utf-8"
+    )
     return cfg
 
 
@@ -98,8 +99,7 @@ def _agent(script, tools, **kwargs):
 
 def test_handshake_registers_each_remote_tool(mcp_config):
     tools = load_mcp_tools(mcp_config)
-    assert {t.name for t in tools} == {
-        "mcp__fake__echo", "mcp__fake__crash", "mcp__fake__stall", "mcp__fake__fail"}
+    assert {t.name for t in tools} == {"mcp__fake__echo", "mcp__fake__crash", "mcp__fake__stall", "mcp__fake__fail"}
     echo = next(t for t in tools if t.name == "mcp__fake__echo")
     assert echo.description == "Echo text back"
     assert echo.schema()["function"]["parameters"]["properties"]["text"] == {"type": "string"}
@@ -118,8 +118,7 @@ def test_call_round_trip_returns_text_content(mcp_config):
 
 def test_parallel_calls_to_one_server_dont_cross_wires(mcp_config):
     agent = _agent(
-        [LLMResponse(tool_calls=[_echo_call("c1", "one"), _echo_call("c2", "two")]),
-         LLMResponse(content="done")],
+        [LLMResponse(tool_calls=[_echo_call("c1", "one"), _echo_call("c2", "two")]), LLMResponse(content="done")],
         load_mcp_tools(mcp_config),
     )
 
@@ -130,9 +129,11 @@ def test_parallel_calls_to_one_server_dont_cross_wires(mcp_config):
 
 def test_server_crash_mid_call_fails_without_killing_the_loop(mcp_config):
     agent = _agent(
-        [LLMResponse(tool_calls=[ToolCall(id="c1", name="mcp__fake__crash", arguments={})]),
-         LLMResponse(tool_calls=[_echo_call("c2")]),
-         LLMResponse(content="still alive")],
+        [
+            LLMResponse(tool_calls=[ToolCall(id="c1", name="mcp__fake__crash", arguments={})]),
+            LLMResponse(tool_calls=[_echo_call("c2")]),
+            LLMResponse(content="still alive"),
+        ],
         load_mcp_tools(mcp_config),
     )
 

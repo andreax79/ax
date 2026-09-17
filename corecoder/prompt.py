@@ -11,6 +11,7 @@ read-only tools only; every mutating call is refused. Once you understand the
 task, present the plan as a numbered list and stop. Do not execute any of it
 until the user approves."""
 
+
 def system_prompt(tools, project_root: str, project_guidance: str = "", guidance_path: str | None = None) -> str:
     cwd = os.getcwd()
     project_root_line = f"\n- Project root: {project_root}" if project_root else ""

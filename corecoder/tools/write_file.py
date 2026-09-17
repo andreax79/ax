@@ -11,8 +11,7 @@ from .edit_file import _changed_files
 class WriteFileTool(Tool):
     name = "write_file"
     description = (
-        "Create a new file or completely overwrite an existing one. "
-        "For small edits to existing files, prefer edit_file instead."
+        "Create a new file or completely overwrite an existing one. For small edits to existing files, prefer edit_file instead."
     )
     parameters: ClassVar[dict] = {
         "type": "object",

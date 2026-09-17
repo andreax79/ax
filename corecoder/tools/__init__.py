@@ -11,18 +11,12 @@ def get_tools() -> list[Tool]:
     """
     tools = []
     package = sys.modules[__name__]
-    for _, name, is_pkg in pkgutil.iter_modules(
-        package.__path__, package.__name__ + "."
-    ):
+    for _, name, is_pkg in pkgutil.iter_modules(package.__path__, package.__name__ + "."):
         if not is_pkg:
             module = importlib.import_module(name)
             for attr_name in dir(module):
                 attr = getattr(module, attr_name)
-                if (
-                    isinstance(attr, type)
-                    and issubclass(attr, Tool)
-                    and attr is not Tool
-                ):
+                if isinstance(attr, type) and issubclass(attr, Tool) and attr is not Tool:
                     tools.append(attr())
     return tools
 

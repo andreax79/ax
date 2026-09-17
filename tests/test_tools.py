@@ -3,7 +3,7 @@
 import os
 import sys
 
-from corecoder.tools import get_tools, get_tool
+from corecoder.tools import get_tool, get_tools
 
 
 def test_tool_count():
@@ -23,6 +23,7 @@ def test_all_tools_have_valid_schema():
 
 
 # --- bash ---
+
 
 def test_bash_basic():
     bash = get_tool("bash")
@@ -139,6 +140,7 @@ def test_bash_truncates_long_output():
 
 # --- read_file ---
 
+
 def test_read_file(tmp_path):
     read = get_tool("read_file")
     path = tmp_path / "sample.txt"
@@ -161,7 +163,7 @@ def test_read_file_offset_limit(tmp_path):
     r = read.execute(file_path=str(path), offset=10, limit=5)
     # offset is 1-based: row label 10 carries content "line9"
     assert "10\tline9" in r
-    assert "line8" not in r   # before the window
+    assert "line8" not in r  # before the window
     assert "line14" not in r  # 5-line limit stops at content line13
 
 
@@ -185,6 +187,7 @@ def test_read_write_unicode_roundtrip(tmp_path):
 
 # --- write_file ---
 
+
 def test_write_file(tmp_path):
     write = get_tool("write_file")
     path = tmp_path / "out.txt"
@@ -202,6 +205,7 @@ def test_write_file_creates_dirs(tmp_path):
 
 
 # --- edit_file ---
+
 
 def test_edit_file_basic(tmp_path):
     edit = get_tool("edit_file")
@@ -364,6 +368,7 @@ def test_delete_file_deletes_directory_recursively(tmp_path):
 
 # --- glob ---
 
+
 def test_glob_finds_files():
     glob_t = get_tool("glob")
     r = glob_t.execute(pattern="*.py", path=os.path.dirname(__file__))
@@ -405,6 +410,7 @@ def test_glob_honors_project_root_gitignore(tmp_path):
 
 # --- grep ---
 
+
 def test_grep_finds_pattern():
     grep = get_tool("grep")
     r = grep.execute(pattern="def test_grep", path=__file__)
@@ -436,8 +442,10 @@ def test_grep_searches_under_skip_named_ancestor(tmp_path):
 def test_grep_reports_truncated_file_scan(monkeypatch, tmp_path):
     """A truncated file scan must be reported as an incomplete result."""
     grep = get_tool("grep")
+
     def fake_walk(root, include):
         return [], True
+
     monkeypatch.setattr(type(grep), "_walk", staticmethod(fake_walk))
     r = grep.execute(pattern="needle", path=str(tmp_path))
     assert "No matches found in scanned files." in r
@@ -518,6 +526,7 @@ def test_ag_rejects_invalid_file_type():
 
 # --- agent tool ---
 
+
 def test_agent_tool_schema():
     agent_t = get_tool("agent")
     s = agent_t.schema()
@@ -528,14 +537,18 @@ def test_agent_tool_schema():
 # --- todo_write ---
 # fresh instances, not the registry singleton: the list is per-instance state
 
+
 def test_todo_write_creates_ordered_list():
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
-    r = todo.execute(tasks=[
-        {"content": "read the failing module", "status": "done"},
-        {"content": "fix the parser", "status": "in_progress"},
-        {"content": "run the tests", "status": "pending"},
-    ])
+    r = todo.execute(
+        tasks=[
+            {"content": "read the failing module", "status": "done"},
+            {"content": "fix the parser", "status": "in_progress"},
+            {"content": "run the tests", "status": "pending"},
+        ]
+    )
     assert "1. [done] read the failing module" in r
     assert "2. [in_progress] fix the parser" in r
     assert "3. [pending] run the tests" in r
@@ -544,6 +557,7 @@ def test_todo_write_creates_ordered_list():
 def test_todo_write_replaces_whole_list():
     """Each call replaces the list outright; nothing is appended or merged."""
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     todo.execute(tasks=[{"content": "old task", "status": "pending"}])
     todo.execute(tasks=[{"content": "new task", "status": "in_progress"}])
@@ -555,6 +569,7 @@ def test_todo_write_replaces_whole_list():
 def test_todo_write_status_flow():
     """A task walks pending -> in_progress -> done by rewriting the full list."""
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     todo.execute(tasks=[{"content": "ship it", "status": "pending"}])
     assert "[pending] ship it" in todo.render()
@@ -566,6 +581,7 @@ def test_todo_write_status_flow():
 
 def test_todo_write_clear():
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     todo.execute(tasks=[{"content": "temp", "status": "pending"}])
     r = todo.execute(tasks=[])
@@ -575,6 +591,7 @@ def test_todo_write_clear():
 
 def test_todo_write_rejects_bad_status():
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     r = todo.execute(tasks=[{"content": "x", "status": "doing"}])
     assert "invalid status" in r
@@ -583,6 +600,7 @@ def test_todo_write_rejects_bad_status():
 
 def test_todo_write_rejects_empty_content():
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     assert "content" in todo.execute(tasks=[{"content": "  ", "status": "pending"}])
     assert "content" in todo.execute(tasks=[{"status": "pending"}])
@@ -591,6 +609,7 @@ def test_todo_write_rejects_empty_content():
 
 def test_todo_write_rejects_non_list():
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     assert "Error" in todo.execute(tasks="just a string")
 
@@ -598,6 +617,7 @@ def test_todo_write_rejects_non_list():
 def test_todo_write_bad_call_keeps_old_list():
     """Validation happens before the swap: a rejected call must not clobber state."""
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     todo.execute(tasks=[{"content": "keep me", "status": "pending"}])
     todo.execute(tasks=[{"content": "bad", "status": "nope"}])

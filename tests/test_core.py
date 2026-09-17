@@ -9,9 +9,9 @@ from corecoder import session as session_module
 from corecoder.context import ContextManager, estimate_tokens
 from corecoder.project_guidance import MAX_GUIDANCE_CHARS, load_project_guidance
 from corecoder.prompt import system_prompt
-from corecoder.utils import find_project_root
 from corecoder.session import list_sessions, load_session, save_session
-from corecoder.tools import get_tools, get_tool
+from corecoder.tools import get_tool, get_tools
+from corecoder.utils import find_project_root
 
 
 def test_version():
@@ -161,6 +161,7 @@ def test_agent_loads_project_guidance_from_project_root(tmp_path, monkeypatch):
 
 # --- Context ---
 
+
 def test_estimate_tokens():
     msgs = [{"role": "user", "content": "hello world"}]
     t = estimate_tokens(msgs)
@@ -223,6 +224,7 @@ def test_compress_never_leaves_an_orphan_tool_reply():
 
 # --- Session ---
 
+
 def test_session_save_load(tmp_path, monkeypatch):
     monkeypatch.setattr(session_module, "SESSIONS_DIR", tmp_path)
     msgs = [{"role": "user", "content": "test message"}]
@@ -254,8 +256,10 @@ def test_list_sessions():
 
 # --- Changed files tracking ---
 
+
 def test_edit_tracks_changed_files(tmp_path):
     from corecoder.tools.edit_file import _changed_files
+
     _changed_files.clear()
     edit = get_tool("edit_file")
     path = tmp_path / "sample.py"
@@ -267,6 +271,7 @@ def test_edit_tracks_changed_files(tmp_path):
 
 def test_write_tracks_changed_files(tmp_path):
     from corecoder.tools.edit_file import _changed_files
+
     _changed_files.clear()
     write = get_tool("write_file")
     path = tmp_path / "tracked.txt"
@@ -276,6 +281,7 @@ def test_write_tracks_changed_files(tmp_path):
 
 
 # --- Agent tool execution ---
+
 
 def test_agent_tool_scope_is_per_instance():
     """An Agent restricted to a subset of tools must not resolve tools outside it."""
@@ -337,16 +343,20 @@ def test_interrupt_backfills_missing_tool_replies():
 
 # --- Task list injection ---
 
+
 def test_todo_list_is_injected_into_system_context():
     """After a todo_write call, the next request must carry the list in the system message."""
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     agent = Agent(llm=LLM.__new__(LLM), tools=[todo])
 
-    todo.execute(tasks=[
-        {"content": "fix the bug", "status": "in_progress"},
-        {"content": "add a test", "status": "pending"},
-    ])
+    todo.execute(
+        tasks=[
+            {"content": "fix the bug", "status": "in_progress"},
+            {"content": "add a test", "status": "pending"},
+        ]
+    )
     system = agent._full_messages()[0]["content"]
     assert "# Current task list" in system
     assert "1. [in_progress] fix the bug" in system
@@ -356,6 +366,7 @@ def test_todo_list_is_injected_into_system_context():
 def test_todo_injection_tracks_updates():
     """The injection is rebuilt every round: updates show, an empty list injects nothing."""
     from corecoder.tools.todo_write import TodoWriteTool
+
     todo = TodoWriteTool()
     agent = Agent(llm=LLM.__new__(LLM), tools=[todo])
 

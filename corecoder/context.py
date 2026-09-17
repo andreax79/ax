@@ -39,9 +39,9 @@ class ContextManager:
     def __init__(self, max_tokens: int = 128_000):
         self.max_tokens = max_tokens
         # layer thresholds (fraction of max_tokens)
-        self._snip_at = int(max_tokens * 0.50)    # 50% -> snip tool outputs
+        self._snip_at = int(max_tokens * 0.50)  # 50% -> snip tool outputs
         self._summarize_at = int(max_tokens * 0.70)  # 70% -> LLM summarize
-        self._collapse_at = int(max_tokens * 0.90)   # 90% -> hard collapse
+        self._collapse_at = int(max_tokens * 0.90)  # 90% -> hard collapse
 
     def maybe_compress(self, messages: list[dict], llm: LLM | None = None) -> bool:
         """Apply compression layers as needed. Returns True if any compression happened."""
@@ -83,11 +83,7 @@ class ContextManager:
             if len(lines) <= 6:
                 continue
             # keep first 3 + last 3 lines
-            snipped = (
-                "\n".join(lines[:3])
-                + f"\n... ({len(lines)} lines, snipped to save context) ...\n"
-                + "\n".join(lines[-3:])
-            )
+            snipped = "\n".join(lines[:3]) + f"\n... ({len(lines)} lines, snipped to save context) ...\n" + "\n".join(lines[-3:])
             m["content"] = snipped
             changed = True
         return changed
@@ -105,8 +101,7 @@ class ContextManager:
             split -= 1
         return split
 
-    def _summarize_old(self, messages: list[dict], llm: LLM | None,
-                       keep_recent: int = 8) -> bool:
+    def _summarize_old(self, messages: list[dict], llm: LLM | None, keep_recent: int = 8) -> bool:
         """Layer 2: Summarize old conversation, keep recent messages intact."""
         if len(messages) <= keep_recent:
             return False
@@ -118,14 +113,18 @@ class ContextManager:
         summary = self._get_summary(old, llm)
 
         messages.clear()
-        messages.append({
-            "role": "user",
-            "content": f"[Context compressed - conversation summary]\n{summary}",
-        })
-        messages.append({
-            "role": "assistant",
-            "content": "Got it, I have the context from our earlier conversation.",
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": f"[Context compressed - conversation summary]\n{summary}",
+            }
+        )
+        messages.append(
+            {
+                "role": "assistant",
+                "content": "Got it, I have the context from our earlier conversation.",
+            }
+        )
         messages.extend(tail)
         return True
 
@@ -136,14 +135,18 @@ class ContextManager:
         summary = self._get_summary(messages[:split], llm)
 
         messages.clear()
-        messages.append({
-            "role": "user",
-            "content": f"[Hard context reset]\n{summary}",
-        })
-        messages.append({
-            "role": "assistant",
-            "content": "Context restored. Continuing from where we left off.",
-        })
+        messages.append(
+            {
+                "role": "user",
+                "content": f"[Hard context reset]\n{summary}",
+            }
+        )
+        messages.append(
+            {
+                "role": "assistant",
+                "content": "Context restored. Continuing from where we left off.",
+            }
+        )
         messages.extend(tail)
 
     def _get_summary(self, messages: list[dict], llm: LLM | None) -> str:
@@ -189,13 +192,14 @@ class ContextManager:
     def _extract_key_info(messages: list[dict]) -> str:
         """Fallback: extract file paths, errors, and decisions without LLM."""
         import re
+
         files_seen = set()
         errors = []
 
         for m in messages:
             text = m.get("content", "") or ""
             # extract file paths
-            for match in re.finditer(r'[\w./\-]+\.\w{1,5}', text):
+            for match in re.finditer(r"[\w./\-]+\.\w{1,5}", text):
                 files_seen.add(match.group())
             # extract error lines
             for line in text.splitlines():

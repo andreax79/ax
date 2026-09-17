@@ -158,13 +158,13 @@ class LLM:
             except (RateLimitError, APITimeoutError, APIConnectionError):
                 if attempt == max_retries - 1:
                     raise
-                wait = 2 ** attempt
+                wait = 2**attempt
                 time.sleep(wait)
             except APIError as e:
                 # retry 5xx server errors but not 4xx; base APIError has no status_code so read it defensively
                 status_code = getattr(e, "status_code", None)
                 if status_code and status_code >= 500 and attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                 else:
                     raise
 
@@ -212,12 +212,9 @@ class LiteLLM(LLM):
                 return litellm.completion(**params)
             except Exception as e:
                 err = str(e).lower()
-                is_transient = any(
-                    kw in err
-                    for kw in ["rate_limit", "timeout", "connection", "502", "503", "529"]
-                )
+                is_transient = any(kw in err for kw in ["rate_limit", "timeout", "connection", "502", "503", "529"])
                 is_server = any(kw in err for kw in ["500", "502", "503", "504"])
                 if (is_transient or is_server) and attempt < max_retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                 else:
                     raise

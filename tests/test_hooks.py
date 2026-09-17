@@ -11,16 +11,17 @@ from corecoder.tools import get_tool
 
 
 def _write_call(call_id, path):
-    return ToolCall(id=call_id, name="write_file",
-                    arguments={"file_path": str(path), "content": "x\n"})
+    return ToolCall(id=call_id, name="write_file", arguments={"file_path": str(path), "content": "x\n"})
 
 
 def _agent(tmp_path, hooks, permission=None):
     return Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
-            LLMResponse(content="done"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
+                LLMResponse(content="done"),
+            ]
+        ),
         tools=[get_tool("write_file")],
         permission=permission,
         hooks=hooks,
@@ -37,12 +38,12 @@ def test_pre_hook_blocks_with_reason_and_the_tool_never_runs(tmp_path):
         permission=Permission(ask=lambda n, a: asked.append(n) or "once"),
     )
 
-    assert agent.chat("go") == "done"          # the loop survived the veto
-    assert not (tmp_path / "a.txt").exists()   # the tool never executed
+    assert agent.chat("go") == "done"  # the loop survived the veto
+    assert not (tmp_path / "a.txt").exists()  # the tool never executed
     result = agent.messages[2]
     assert result["role"] == "tool" and result["tool_call_id"] == "c1"
     assert "writes are frozen today" in result["content"]  # the model gets the reason
-    assert asked == []                         # hooks gate before consent is asked
+    assert asked == []  # hooks gate before consent is asked
 
 
 def test_pre_hook_passing_lets_the_call_through(tmp_path):
@@ -59,7 +60,7 @@ def test_post_hook_observes_the_finished_call(tmp_path):
     assert agent.chat("go") == "done"
     seen = marker.read_text()
     assert '"tool_name": "write_file"' in seen  # the call JSON arrived on stdin
-    assert '"tool_response"' in seen            # post hooks see the result too
+    assert '"tool_response"' in seen  # post hooks see the result too
 
 
 def test_matcher_scopes_a_hook_to_one_tool(tmp_path):
@@ -130,12 +131,14 @@ def test_hooks_gate_each_call_of_a_parallel_batch(tmp_path):
 def test_sub_agent_inherits_the_hooks(tmp_path):
     target = tmp_path / "sub.txt"
     agent = Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[ToolCall(id="c1", name="agent", arguments={"task": "write the file"})]),
-            LLMResponse(tool_calls=[_write_call("c2", target)]),  # the sub-agent's move
-            LLMResponse(content="could not write"),               # the sub-agent's reply
-            LLMResponse(content="parent done"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[ToolCall(id="c1", name="agent", arguments={"task": "write the file"})]),
+                LLMResponse(tool_calls=[_write_call("c2", target)]),  # the sub-agent's move
+                LLMResponse(content="could not write"),  # the sub-agent's reply
+                LLMResponse(content="parent done"),
+            ]
+        ),
         tools=[get_tool("agent"), get_tool("write_file")],
         hooks=Hooks(pre=[{"matcher": "write_file", "command": "sh -c 'echo no >&2; exit 2'"}], post=[]),
     )

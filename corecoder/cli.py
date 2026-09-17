@@ -41,7 +41,6 @@ def _parse_args():
     p.add_argument("--api-key", help="API key (default: $OPENAI_API_KEY)")
     p.add_argument("-p", "--prompt", help="One-shot prompt (non-interactive mode)")
     p.add_argument("--yes", action="store_true", help="Auto-approve every tool call (for scripts and CI)")
-    p.add_argument("--demo", action="store_true", help="Run the offline scripted demo (no API key needed)")
     p.add_argument("-r", "--resume", metavar="ID", help="Resume a saved session")
     p.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
     return p.parse_args()
@@ -49,11 +48,6 @@ def _parse_args():
 
 def main():
     args = _parse_args()
-
-    if args.demo:
-        from .demo import run_demo
-        raise SystemExit(run_demo())
-
     config = Config.from_env()
 
     # CLI args override env vars
@@ -177,18 +171,23 @@ def _repl(agent: Agent, config: Config):
     mode = "auto-approve every tool call (--yes)" if (perm and perm.allow_all) else "ask before mutating tools"
     mcp_count = sum(1 for t in agent.tools if t.name.startswith("mcp__"))
     project_root_line = f"\nProject root: [dim]{agent.project_root}[/dim]" if agent.project_root else ""
-    console.print(Panel(
-        f"[bold]CoreCoder[/bold] v{__version__}\n"
-        f"Model: [cyan]{config.model}[/cyan]"
-        + (f"  Base: [dim]{config.base_url}[/dim]" if config.base_url else "")
-        + f"\nPermissions: [cyan]{mode}[/cyan]"
-        + project_root_line
-        + (f"\nHooks: [cyan]{len(agent.hooks.pre)} pre, {len(agent.hooks.post)} post[/cyan]"
-           " from ~/.corecoder/hooks.json" if agent.hooks else "")
-        + (f"\nMCP: [cyan]{mcp_count} tools[/cyan] from ~/.corecoder/mcp.json" if mcp_count else "")
-        + "\nType [bold]/help[/bold] for commands, [bold]Ctrl+C[/bold] to cancel, [bold]quit[/bold] to exit.",
-        border_style="blue",
-    ))
+    console.print(
+        Panel(
+            f"[bold]CoreCoder[/bold] v{__version__}\n"
+            f"Model: [cyan]{config.model}[/cyan]"
+            + (f"  Base: [dim]{config.base_url}[/dim]" if config.base_url else "")
+            + f"\nPermissions: [cyan]{mode}[/cyan]"
+            + project_root_line
+            + (
+                f"\nHooks: [cyan]{len(agent.hooks.pre)} pre, {len(agent.hooks.post)} post[/cyan] from ~/.corecoder/hooks.json"
+                if agent.hooks
+                else ""
+            )
+            + (f"\nMCP: [cyan]{mcp_count} tools[/cyan] from ~/.corecoder/mcp.json" if mcp_count else "")
+            + "\nType [bold]/help[/bold] for commands, [bold]Ctrl+C[/bold] to cancel, [bold]quit[/bold] to exit.",
+            border_style="blue",
+        )
+    )
 
     hist_path = os.path.expanduser("~/.corecoder_history")
     history = FileHistory(hist_path)
@@ -252,7 +251,7 @@ def _repl(agent: Agent, config: Config):
         if user_input == "/tokens":
             p = agent.llm.total_prompt_tokens
             c = agent.llm.total_completion_tokens
-            line = f"Tokens: [cyan]{p}[/cyan] prompt + [cyan]{c}[/cyan] completion = [bold]{p+c}[/bold] total"
+            line = f"Tokens: [cyan]{p}[/cyan] prompt + [cyan]{c}[/cyan] completion = [bold]{p + c}[/bold] total"
             console.print(line)
             continue
         if user_input == "/model" or user_input.startswith("/model "):
@@ -266,6 +265,7 @@ def _repl(agent: Agent, config: Config):
             continue
         if user_input == "/compact":
             from .context import estimate_tokens
+
             before = estimate_tokens(agent.messages)
             compressed = agent.context.maybe_compress(agent.messages, agent.llm)
             after = estimate_tokens(agent.messages)
@@ -281,6 +281,7 @@ def _repl(agent: Agent, config: Config):
             continue
         if user_input == "/diff":
             from .tools.edit_file import _changed_files
+
             if not _changed_files:
                 console.print("[dim]No files modified this session.[/dim]")
             else:
@@ -290,6 +291,7 @@ def _repl(agent: Agent, config: Config):
             continue
         if user_input == "/undo":
             from .checkpoints import pending, undo
+
             console.print(undo())
             left = pending()
             if left:
@@ -393,44 +395,44 @@ def _run_shell_input(user_input: str, agent: Agent | None = None):
 
 
 def _show_help():
-    console.print(Panel(
-        "[bold]Commands:[/bold]\n"
-        "  /help          Show this help\n"
-        "  /reset         Clear conversation history\n"
-        "  /model         Show current model\n"
-        "  /model <name>  Switch model mid-conversation\n"
-        "  /tokens        Show token usage\n"
-        "  /compact       Compress conversation context\n"
-        "  /diff          Show files modified this session\n"
-        "  /undo          Revert the most recent file change\n"
-        "  /plan          Toggle plan mode: read-only, then a plan to approve\n"
-        "  /save          Save session to disk\n"
-        "  /sessions      List saved sessions\n"
-        "  quit           Exit CoreCoder\n"
-        "\n"
-        "[bold]Shell:[/bold]\n"
-        "  !              Start an interactive shell\n"
-        "  !cd <path>     Change current directory\n"
-        "  !<command>     Run a shell command directly\n"
-        "\n"
-        "[bold]Input:[/bold]\n"
-        "  Enter          Submit message\n"
-        "  Esc+Enter      Insert newline (for pasting code)",
-        title="CoreCoder Help",
-        border_style="dim",
-    ))
+    console.print(
+        Panel(
+            "[bold]Commands:[/bold]\n"
+            "  /help          Show this help\n"
+            "  /reset         Clear conversation history\n"
+            "  /model         Show current model\n"
+            "  /model <name>  Switch model mid-conversation\n"
+            "  /tokens        Show token usage\n"
+            "  /compact       Compress conversation context\n"
+            "  /diff          Show files modified this session\n"
+            "  /undo          Revert the most recent file change\n"
+            "  /plan          Toggle plan mode: read-only, then a plan to approve\n"
+            "  /save          Save session to disk\n"
+            "  /sessions      List saved sessions\n"
+            "  quit           Exit CoreCoder\n"
+            "\n"
+            "[bold]Shell:[/bold]\n"
+            "  !              Start an interactive shell\n"
+            "  !cd <path>     Change current directory\n"
+            "  !<command>     Run a shell command directly\n"
+            "\n"
+            "[bold]Input:[/bold]\n"
+            "  Enter          Submit message\n"
+            "  Esc+Enter      Insert newline (for pasting code)",
+            title="CoreCoder Help",
+            border_style="dim",
+        )
+    )
+
 
 def _brief_format(k: str, v: t.Any) -> str:
     """Return a brief string representation of a key-value pair."""
     if k in ("path", "file_path"):
-        return f"{k}={repr(v)}"
+        return f"{k}={v!r}"
     else:
         return f"{k}={repr(v)[:40]}"
 
+
 def _brief(kwargs: dict, maxlen: int = 140) -> str:
-    s = ", ".join(
-        _brief_format(k, v)
-        for k, v in kwargs.items()
-        if k not in ("timeout", "old_string", "new_string")
-    )
+    s = ", ".join(_brief_format(k, v) for k, v in kwargs.items() if k not in ("timeout", "old_string", "new_string"))
     return s[:maxlen] + ("..." if len(s) > maxlen else "")

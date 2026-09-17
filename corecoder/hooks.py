@@ -73,8 +73,15 @@ def _fire(hook: dict, payload: dict):
         return None
     try:
         proc = subprocess.run(
-            hook["command"], shell=True, check=False, input=json.dumps(payload),
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=TIMEOUT,
+            hook["command"],
+            shell=True,
+            check=False,
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=TIMEOUT,
         )
     except (subprocess.TimeoutExpired, OSError) as e:
         log.warning("hook skipped (%s): %s", e.__class__.__name__, hook["command"])

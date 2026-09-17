@@ -4,8 +4,8 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from .base import Tool
 from ..gitignore import is_ignored, load_project_gitignore
+from .base import Tool
 
 # skip these dirs to avoid noise
 _SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build"}
@@ -14,10 +14,7 @@ _SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "d
 class GrepTool(Tool):
     name = "grep"
     read_only = True
-    description = (
-        "Search file contents with regex. "
-        "Returns matching lines with file path and line number."
-    )
+    description = "Search file contents with regex. Returns matching lines with file path and line number."
     parameters: ClassVar[dict] = {
         "type": "object",
         "properties": {

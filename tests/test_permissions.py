@@ -8,8 +8,7 @@ from corecoder.tools import get_tool
 
 
 def _write_call(call_id, path):
-    return ToolCall(id=call_id, name="write_file",
-                    arguments={"file_path": str(path), "content": "x\n"})
+    return ToolCall(id=call_id, name="write_file", arguments={"file_path": str(path), "content": "x\n"})
 
 
 def _two_writes_then_text(tmp_path):
@@ -24,10 +23,12 @@ def test_read_only_tools_run_without_consent(tmp_path):
     f = tmp_path / "note.txt"
     f.write_text("hello", encoding="utf-8")
     agent = Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[ToolCall(id="c1", name="read_file", arguments={"file_path": str(f)})]),
-            LLMResponse(content="read it"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[ToolCall(id="c1", name="read_file", arguments={"file_path": str(f)})]),
+                LLMResponse(content="read it"),
+            ]
+        ),
         tools=[get_tool("read_file")],
         permission=Permission(),  # nobody to ask, and it doesn't matter
     )
@@ -40,10 +41,12 @@ def test_ag_runs_without_consent(tmp_path):
     f = tmp_path / "note.txt"
     f.write_text("needle\n", encoding="utf-8")
     agent = Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[ToolCall(id="c1", name="ag", arguments={"pattern": "needle", "path": str(tmp_path)})]),
-            LLMResponse(content="searched"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[ToolCall(id="c1", name="ag", arguments={"pattern": "needle", "path": str(tmp_path)})]),
+                LLMResponse(content="searched"),
+            ]
+        ),
         tools=[get_tool("ag")],
         permission=Permission(),
     )
@@ -80,10 +83,12 @@ def test_always_allow_is_remembered_for_the_session(tmp_path):
 
 def test_deny_skips_execution_and_reports_back(tmp_path):
     agent = Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
-            LLMResponse(content="understood"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
+                LLMResponse(content="understood"),
+            ]
+        ),
         tools=[get_tool("write_file")],
         permission=Permission(ask=lambda name, args: "deny"),
     )
@@ -98,10 +103,12 @@ def test_deny_skips_execution_and_reports_back(tmp_path):
 def test_no_callback_means_auto_deny(tmp_path):
     # one-shot -p mode wires Permission() with no ask: refuse, never hang
     agent = Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
-            LLMResponse(content="ok"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
+                LLMResponse(content="ok"),
+            ]
+        ),
         tools=[get_tool("write_file")],
         permission=Permission(),
     )
@@ -136,8 +143,8 @@ def test_parallel_calls_each_get_their_own_decision(tmp_path):
     )
 
     assert agent.chat("go") == "done"
-    assert not marker.exists()              # the denied bash never ran
-    assert (tmp_path / "ok.txt").exists()   # the allowed write did
+    assert not marker.exists()  # the denied bash never ran
+    assert (tmp_path / "ok.txt").exists()  # the allowed write did
     results = {m["tool_call_id"]: m["content"] for m in agent.messages if m.get("role") == "tool"}
     assert "Permission denied" in results["c1"]
     assert results["c2"].startswith("Wrote")
@@ -152,12 +159,14 @@ def test_sub_agent_inherits_the_permission_layer(tmp_path):
 
     target = tmp_path / "sub.txt"
     agent = Agent(
-        llm=ScriptedLLM([
-            LLMResponse(tool_calls=[ToolCall(id="c1", name="agent", arguments={"task": "write the file"})]),
-            LLMResponse(tool_calls=[_write_call("c2", target)]),  # the sub-agent's move
-            LLMResponse(content="could not write"),               # the sub-agent's reply
-            LLMResponse(content="parent done"),
-        ]),
+        llm=ScriptedLLM(
+            [
+                LLMResponse(tool_calls=[ToolCall(id="c1", name="agent", arguments={"task": "write the file"})]),
+                LLMResponse(tool_calls=[_write_call("c2", target)]),  # the sub-agent's move
+                LLMResponse(content="could not write"),  # the sub-agent's reply
+                LLMResponse(content="parent done"),
+            ]
+        ),
         tools=[get_tool("agent"), get_tool("write_file")],
         permission=Permission(ask=ask),
     )
@@ -169,14 +178,17 @@ def test_sub_agent_inherits_the_permission_layer(tmp_path):
 
 # --- the CLI side of the layer ---
 
+
 def test_yes_flag_parses(monkeypatch):
     from corecoder.cli import _parse_args
+
     monkeypatch.setattr("sys.argv", ["corecoder", "--yes"])
     assert _parse_args().yes
 
 
 def test_ask_prompt_maps_answers(monkeypatch):
     from corecoder import cli
+
     answers = iter(["y", "a", "n", "garbage"])
     monkeypatch.setattr(cli, "pt_prompt", lambda *a, **k: next(answers))
 

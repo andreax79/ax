@@ -18,7 +18,7 @@ def test_bang_command_runs_direct_shell_command(monkeypatch):
 
     cli._run_shell_input("!ls -l")
 
-    assert calls == [(('ls -l',), {"shell": True, "check": False})]
+    assert calls == [(("ls -l",), {"shell": True, "check": False})]
 
 
 def test_bang_alone_starts_interactive_shell(monkeypatch):
@@ -33,7 +33,7 @@ def test_bang_alone_starts_interactive_shell(monkeypatch):
 
     cli._run_shell_input("!")
 
-    assert calls == [(('/bin/test-shell',), {"shell": False, "check": False})]
+    assert calls == [(("/bin/test-shell",), {"shell": False, "check": False})]
 
 
 def test_bang_cd_changes_corecoder_cwd_and_bash_tool_cwd(tmp_path, monkeypatch):

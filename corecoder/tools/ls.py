@@ -11,8 +11,7 @@ class LsTool(Tool):
     name = "ls"
     read_only = True
     description = (
-        "List files and directories in a path. "
-        "Shows immediate children, directories first, and honors project .gitignore rules."
+        "List files and directories in a path. Shows immediate children, directories first, and honors project .gitignore rules."
     )
     parameters: ClassVar[dict] = {
         "type": "object",
@@ -38,10 +37,7 @@ class LsTool(Tool):
                 return f"Error: {path} is not a directory"
 
             ignore_root, ignore_rules = load_project_gitignore(base)
-            entries = [
-                child for child in base.iterdir()
-                if not is_ignored(child, ignore_root, ignore_rules)
-            ]
+            entries = [child for child in base.iterdir() if not is_ignored(child, ignore_root, ignore_rules)]
             entries.sort(key=lambda p: (not p.is_dir(), p.name.lower()))
 
             shown = entries[:limit]

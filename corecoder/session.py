@@ -85,12 +85,14 @@ def list_sessions() -> list[dict]:
                 if m.get("role") == "user" and m.get("content"):
                     preview = m["content"][:80]
                     break
-            sessions.append({
-                "id": data.get("id", f.stem),
-                "model": data.get("model", "?"),
-                "saved_at": data.get("saved_at", "?"),
-                "preview": preview,
-            })
+            sessions.append(
+                {
+                    "id": data.get("id", f.stem),
+                    "model": data.get("model", "?"),
+                    "saved_at": data.get("saved_at", "?"),
+                    "preview": preview,
+                }
+            )
         except (json.JSONDecodeError, KeyError):
             continue
 

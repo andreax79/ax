@@ -9,10 +9,7 @@ from .base import Tool
 class ReadFileTool(Tool):
     name = "read_file"
     read_only = True
-    description = (
-        "Read a file's contents with line numbers. "
-        "Always read a file before editing it."
-    )
+    description = "Read a file's contents with line numbers. Always read a file before editing it."
     parameters: ClassVar[dict] = {
         "type": "object",
         "properties": {
@@ -50,7 +47,7 @@ class ReadFileTool(Tool):
             result = "\n".join(numbered)
 
             if total > start + limit:
-                result += f"\n... ({total} lines total, showing {start+1}-{start+len(chunk)})"
+                result += f"\n... ({total} lines total, showing {start + 1}-{start + len(chunk)})"
             return result or "(empty file)"
         except Exception as e:  # noqa: BLE001
             # boundary: the agent gets an error string, not a traceback

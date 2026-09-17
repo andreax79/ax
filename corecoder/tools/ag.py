@@ -9,13 +9,11 @@ from .base import Tool
 
 DEFAULT_MAX_COUNT = 200
 
+
 class AgTool(Tool):
     name = "ag"
     read_only = True
-    description = (
-        "Search code using The Silver Searcher (ag). "
-        "Returns matching lines with file path and line number."
-    )
+    description = "Search code using The Silver Searcher (ag). Returns matching lines with file path and line number."
     parameters: ClassVar[dict] = {
         "type": "object",
         "properties": {
@@ -59,14 +57,7 @@ class AgTool(Tool):
         if not base.exists():
             return f"Error: {path} not found"
 
-        cmd = [
-            "ag",
-            "--nocolor",
-            "--nogroup",
-            "--numbers",
-            "--max-count",
-            str(max_count)
-        ]
+        cmd = ["ag", "--nocolor", "--nogroup", "--numbers", "--max-count", str(max_count)]
         if literal:
             cmd.append("--literal")
         if file_type:
