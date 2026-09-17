@@ -215,27 +215,6 @@ def test_list_sessions():
     assert isinstance(sessions, list)
 
 
-# --- Cost estimation ---
-
-def test_cost_estimation_known_model():
-    from corecoder.llm import LLM
-    llm = LLM.__new__(LLM)
-    llm.model = "gpt-5.4"
-    llm.total_prompt_tokens = 1_000_000
-    llm.total_completion_tokens = 500_000
-    cost = llm.estimated_cost
-    assert cost is not None
-    assert cost == 2.5 + 7.5  # $2.5/M in + $15/M out * 0.5M
-
-def test_cost_estimation_unknown_model():
-    from corecoder.llm import LLM
-    llm = LLM.__new__(LLM)
-    llm.model = "some-custom-model"
-    llm.total_prompt_tokens = 1000
-    llm.total_completion_tokens = 500
-    assert llm.estimated_cost is None
-
-
 # --- Changed files tracking ---
 
 def test_edit_tracks_changed_files(tmp_path):

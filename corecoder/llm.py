@@ -49,38 +49,6 @@ class LLMResponse:
         return msg
 
 
-# pricing per million tokens: (input, output)
-# sources: openai.com/api/pricing, api-docs.deepseek.com, platform.claude.com,
-#          platform.moonshot.ai, alibabacloud.com/help/en/model-studio
-_PRICING = {
-    # OpenAI - current flagships
-    "gpt-5.5": (5, 30),
-    "gpt-5.4": (2.5, 15),
-    "gpt-5.4-mini": (0.75, 4.5),
-    "gpt-5.4-nano": (0.2, 1.25),
-    "o4-mini": (1.1, 4.4),
-    # OpenAI - previous gen (still widely used)
-    "gpt-4.1": (2, 8),
-    "gpt-4.1-mini": (0.4, 1.6),
-    "gpt-4.1-nano": (0.1, 0.4),
-    "gpt-4o": (2.5, 10),
-    "gpt-4o-mini": (0.15, 0.6),
-    # DeepSeek
-    "deepseek-chat": (0.27, 1.10),
-    "deepseek-reasoner": (0.55, 2.19),
-    # Anthropic Claude
-    "claude-opus-4-6": (5, 25),
-    "claude-sonnet-4-6": (3, 15),
-    "claude-haiku-4-5": (1, 5),
-    # Alibaba Qwen
-    "qwen3-max": (0.78, 3.9),
-    "qwen3-plus": (0.26, 0.78),
-    "qwen-max": (0.78, 3.9),
-    # Moonshot Kimi
-    "kimi-k2.5": (0.6, 3),
-}
-
-
 class LLM:
     def __init__(
         self,
@@ -94,18 +62,6 @@ class LLM:
         self.extra = kwargs  # temperature, max_tokens, etc.
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
-
-    @property
-    def estimated_cost(self) -> float | None:
-        """Rough cost estimate in USD. Returns None if model not in pricing table."""
-        pricing = _PRICING.get(self.model)
-        if not pricing:
-            return None
-        input_rate, output_rate = pricing
-        return (
-            self.total_prompt_tokens * input_rate / 1_000_000
-            + self.total_completion_tokens * output_rate / 1_000_000
-        )
 
     def chat(
         self,

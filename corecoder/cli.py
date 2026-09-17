@@ -242,9 +242,6 @@ def _repl(agent: Agent, config: Config):
             p = agent.llm.total_prompt_tokens
             c = agent.llm.total_completion_tokens
             line = f"Tokens: [cyan]{p}[/cyan] prompt + [cyan]{c}[/cyan] completion = [bold]{p+c}[/bold] total"
-            cost = agent.llm.estimated_cost
-            if cost is not None:
-                line += f"  (~${cost:.4f})"
             console.print(line)
             continue
         if user_input == "/model" or user_input.startswith("/model "):
