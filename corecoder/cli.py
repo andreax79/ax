@@ -2,6 +2,8 @@
 
 import argparse
 import os
+import shlex
+import subprocess
 import sys
 
 from prompt_toolkit import prompt as pt_prompt
@@ -18,8 +20,11 @@ from .hooks import load_hooks
 from .llm import LLM, LiteLLM
 from .mcp import load_mcp_tools
 from .permissions import Permission
+from .prompt import system_prompt
 from .session import list_sessions, load_session, save_session
 from .tools import ALL_TOOLS
+from .tools.bash import set_cwd
+from .utils import find_project_root
 
 console = Console()
 
@@ -213,6 +218,10 @@ def _repl(agent: Agent, config: Config):
         if not user_input:
             continue
 
+        if user_input.startswith("!"):
+            _run_shell_input(user_input, agent)
+            continue
+
         # built-in commands
         if user_input.lower() in ("quit", "exit", "/quit", "/exit"):
             break
@@ -322,6 +331,55 @@ def _repl(agent: Agent, config: Config):
             console.print(f"\n[red]Error: {e}[/red]")
 
 
+def _run_shell_input(user_input: str, agent: Agent | None = None):
+    """Handle REPL lines prefixed with ! as direct shell commands."""
+    command = user_input[1:].strip()
+    if not command:
+        shell = os.environ.get("SHELL") or ("cmd" if os.name == "nt" else "/bin/sh")
+        try:
+            subprocess.run(shell, shell=False, check=False)
+        except FileNotFoundError:
+            console.print(f"[red]Shell not found: {shell}[/red]")
+        return
+
+    if command == "cd" or command.startswith("cd "):
+        target = command[2:].strip()
+        if not target and agent is not None:
+            target = str(agent.project_root)
+        if not target:
+            return
+        try:
+            unquoted = shlex.split(target)
+        except ValueError as e:
+            console.print(f"[red]cd: {e}[/red]")
+            return
+        if len(unquoted) == 1:
+            target = unquoted[0]
+        try:
+            os.chdir(os.path.expandvars(os.path.expanduser(target)))
+        except OSError as e:
+            console.print(f"[red]cd: {e}[/red]")
+            return
+        cwd = os.getcwd()
+        set_cwd(cwd)
+        if agent is not None:
+            agent.project_root = find_project_root()
+            agent._system = system_prompt(agent.tools, project_root=agent.project_root)
+        console.print(f"[dim]cwd: {cwd}[/dim]")
+        return
+
+    try:
+        proc = subprocess.run(command, shell=True, check=False)
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Interrupted.[/yellow]")
+        return
+    except Exception as e:  # noqa: BLE001
+        console.print(f"[red]Error running command: {e}[/red]")
+        return
+    if proc.returncode:
+        console.print(f"[dim][exit code: {proc.returncode}][/dim]")
+
+
 def _show_help():
     console.print(Panel(
         "[bold]Commands:[/bold]\n"
@@ -337,6 +395,11 @@ def _show_help():
         "  /save          Save session to disk\n"
         "  /sessions      List saved sessions\n"
         "  quit           Exit CoreCoder\n"
+        "\n"
+        "[bold]Shell:[/bold]\n"
+        "  !              Start an interactive shell\n"
+        "  !cd <path>     Change current directory\n"
+        "  !<command>     Run a shell command directly\n"
         "\n"
         "[bold]Input:[/bold]\n"
         "  Enter          Submit message\n"

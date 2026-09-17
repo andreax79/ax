@@ -104,6 +104,11 @@ class BashTool(Tool):
             return f"Error running command: {e}"
 
 
+def set_cwd(path: str | os.PathLike):
+    """Set the tracked working directory for bash commands on this thread."""
+    _local.cwd = os.fspath(path)
+
+
 def _check_dangerous(cmd: str) -> str | None:
     """Return a warning string if the command looks destructive, else None."""
     for pattern, reason in _DANGEROUS_PATTERNS:
