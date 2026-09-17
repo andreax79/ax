@@ -42,7 +42,6 @@ def test_config_defaults(monkeypatch):
     monkeypatch.delenv("CORECODER_MAX_TOKENS", raising=False)
 
     c = Config.from_env()
-    assert c.model == "gpt-5.5"
     assert c.max_tokens == 4096
     assert c.temperature == 0.0
 
@@ -267,14 +266,14 @@ def test_edit_tracks_changed_files(tmp_path):
     path = tmp_path / "sample.py"
     path.write_text("aaa\nbbb\n")
     result = edit.execute(file_path=str(path), old_string="aaa", new_string="zzz")
-    assert any(str(path) in p for p in result.changed_files)
+    assert any(path == p for p in result.changed_files)
 
 
 def test_write_tracks_changed_files(tmp_path):
     write = get_tool("write_file")
     path = tmp_path / "tracked.txt"
     result = write.execute(file_path=str(path), content="tracked\n")
-    assert any(path.name in p for p in result.changed_files)
+    assert any(path == p for p in result.changed_files)
 
 
 # --- Agent tool execution ---

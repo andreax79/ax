@@ -4,6 +4,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+DEFAULT_MODEL = "gpt-5.4-mini"
 
 def _load_dotenv() -> None:
     """Load .env from cwd, walking up to home dir."""
@@ -25,7 +26,7 @@ def _load_dotenv() -> None:
 
 @dataclass
 class Config:
-    model: str = "gpt-5.5"
+    model: str = DEFAULT_MODEL
     api_key: str = ""
     base_url: str | None = None
     max_tokens: int = 4096
@@ -40,7 +41,7 @@ class Config:
         # pick up common env vars automatically
         api_key = os.getenv("CORECODER_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or ""
         return cls(
-            model=os.getenv("CORECODER_MODEL", "gpt-5.5"),
+            model=os.getenv("CORECODER_MODEL", DEFAULT_MODEL),
             api_key=api_key,
             base_url=os.getenv("OPENAI_BASE_URL") or os.getenv("CORECODER_BASE_URL"),
             max_tokens=int(os.getenv("CORECODER_MAX_TOKENS", "4096")),

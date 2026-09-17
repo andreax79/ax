@@ -12,6 +12,7 @@ which means it's done working and ready to report back.
 import concurrent.futures
 import inspect
 import typing as t
+from pathlib import Path
 
 from .context import ContextManager
 from .llm import LLM, ToolCall
@@ -23,6 +24,15 @@ from .utils import find_project_root, render_tasks
 
 
 class Agent:
+
+    llm: LLM
+    project_root: Path | None
+    guidance_path: Path | None
+    project_guidance: str
+    tools: list[Tool]
+    max_rounds: int
+    plan_mode: bool
+
     def __init__(
         self,
         llm: LLM,
@@ -49,7 +59,7 @@ class Agent:
             guidance_path=str(self.guidance_path) if self.guidance_path else None,
         )
         self.plan_mode = False  # toggled by /plan; while on, mutating tools are refused
-        self.changed_files: set[str] = set()  # track files changed this session for /diff
+        self.changed_files: set[Path] = set()  # track files changed this session for /diff
 
         # wire up sub-agent capability
         for tool in self.tools:

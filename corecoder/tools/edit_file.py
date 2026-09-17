@@ -65,7 +65,7 @@ class EditFileTool(Tool):
 
             # generate a unified diff so the user/LLM can see exactly what changed
             diff = _unified_diff(content, new_content, str(p))
-            return ToolResult(f"Edited {file_path}\n{diff}", changed_files=[str(p)])
+            return ToolResult(f"Edited {file_path}\n{diff}", changed_files=[p])
         except Exception as e:  # noqa: BLE001
             # boundary: the agent gets an error string, not a traceback
             return f"Error: {e}"

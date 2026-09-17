@@ -3,6 +3,7 @@
 import typing as t
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 
 
 @dataclass
@@ -10,7 +11,7 @@ class ToolResult:
     """Result of a tool execution."""
 
     output: str
-    changed_files: list[str] = field(default_factory=list)
+    changed_files: list[Path] = field(default_factory=list)
     todo_tasks: list[dict[str, t.Any]] | None = None
 
 

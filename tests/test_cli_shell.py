@@ -16,7 +16,7 @@ def test_bang_command_runs_direct_shell_command(monkeypatch):
 
     monkeypatch.setattr(cli.subprocess, "run", fake_run)
 
-    cli._run_shell_input("!ls -l")
+    cli.cmd_shell("!ls -l", None, None)
 
     assert calls == [(("ls -l",), {"shell": True, "check": False})]
 
@@ -31,7 +31,7 @@ def test_bang_alone_starts_interactive_shell(monkeypatch):
     monkeypatch.setenv("SHELL", "/bin/test-shell")
     monkeypatch.setattr(cli.subprocess, "run", fake_run)
 
-    cli._run_shell_input("!")
+    cli.cmd_shell("!", None, None)
 
     assert calls == [(("/bin/test-shell",), {"shell": False, "check": False})]
 
@@ -43,7 +43,7 @@ def test_bang_cd_changes_corecoder_cwd_and_bash_tool_cwd(tmp_path, monkeypatch):
     dest.mkdir()
     monkeypatch.chdir(start)
 
-    cli._run_shell_input(f"!cd {dest}")
+    cli.cmd_shell(f"!cd {dest}", None, None)
 
     assert os.getcwd() == str(dest)
     assert BashTool().execute("pwd") == str(dest)
@@ -60,8 +60,36 @@ def test_bang_cd_refreshes_agent_project_guidance(tmp_path, monkeypatch):
     monkeypatch.chdir(start)
     agent = Agent(llm=LLM.__new__(LLM), tools=[])
 
-    cli._run_shell_input(f"!cd {dest}", agent=agent)
+    cli.cmd_shell(f"!cd {dest}", agent=agent, config=None)
 
     assert agent.project_root == dest
     assert agent.guidance_path == guidance_path
     assert "Use the new guidance." in agent._full_messages()[0]["content"]
+
+
+def test_bang_set_displays_environment_variables(monkeypatch, capsys):
+    monkeypatch.setenv("CORECODER_TEST_ALPHA", "one")
+    monkeypatch.setenv("CORECODER_TEST_BETA", "two")
+
+    cli.cmd_set("set", None, None)
+
+    out = capsys.readouterr().out
+    assert "CORECODER_TEST_ALPHA=one" in out
+    assert "CORECODER_TEST_BETA=two" in out
+
+
+def test_bang_set_assigns_environment_variables(monkeypatch, capsys):
+    monkeypatch.delenv("CORECODER_TEST_SET", raising=False)
+
+    cli.cmd_set("set CORECODER_TEST_SET=works", None, None)
+
+    assert os.environ["CORECODER_TEST_SET"] == "works"
+    assert "CORECODER_TEST_SET set" in capsys.readouterr().out
+
+
+def test_bang_set_displays_single_environment_variable(monkeypatch, capsys):
+    monkeypatch.setenv("CORECODER_TEST_SINGLE", "value")
+
+    cli.cmd_set("set CORECODER_TEST_SINGLE", None, None)
+
+    assert "CORECODER_TEST_SINGLE=value" in capsys.readouterr().out

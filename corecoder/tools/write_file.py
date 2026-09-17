@@ -32,7 +32,7 @@ class WriteFileTool(Tool):
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(content, encoding="utf-8")
             n_lines = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
-            return ToolResult(f"Wrote {n_lines} lines to {file_path}", changed_files=[str(p)])
+            return ToolResult(f"Wrote {n_lines} lines to {file_path}", changed_files=[p])
         except Exception as e:  # noqa: BLE001
             # boundary: the agent gets an error string, not a traceback
             return f"Error: {e}"

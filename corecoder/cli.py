@@ -1,32 +1,48 @@
 """Interactive REPL - the user-facing terminal interface."""
 
 import argparse
+import getpass
 import os
 import shlex
+import socket
 import subprocess
 import sys
+from datetime import datetime
 import typing as t
 
 from prompt_toolkit import prompt as pt_prompt  # type: ignore[import]
 from prompt_toolkit.history import FileHistory  # type: ignore[import]
 from prompt_toolkit.key_binding import KeyBindings  # type: ignore[import]
+from prompt_toolkit.formatted_text import ANSI  # type: ignore[import]
 from rich.console import Console  # type: ignore[import]
 from rich.markdown import Markdown  # type: ignore[import]
 from rich.panel import Panel  # type: ignore[import]
+from rich.text import Text  # type: ignore[import]
 
 from . import __version__
 from .agent import Agent
-from .config import Config
+from .config import Config, DEFAULT_MODEL
 from .hooks import load_hooks
 from .llm import LLM, LiteLLM
 from .mcp import load_mcp_tools
 from .permissions import Permission
-from .project_guidance import load_project_guidance
-from .prompt import system_prompt
-from .session import list_sessions, load_session, save_session
+from .session import load_session
 from .tools import get_tools
-from .tools.bash import set_cwd
-from .utils import find_project_root, render_tasks
+from .utils import render_tasks
+from .cmds import (
+    cmd_reset,
+    cmd_plan,
+    cmd_approve,
+    cmd_model,
+    cmd_tokens,
+    cmd_compact,
+    cmd_save,
+    cmd_diff,
+    cmd_sessions,
+    cmd_shell,
+    cmd_set,
+    cmd_help,
+)
 
 console = Console()
 
@@ -34,18 +50,39 @@ Args = argparse.Namespace
 ToolArgs = dict[str, t.Any]
 
 
+DEFAULT_PROMPT = (
+    "\\m "
+    "[bold cyan]\\u[/]"
+    "@"
+    "[bold green]\\h[/]"
+    ":"
+    "[yellow]\\W[/]"
+    "\\p [bold red]❯[/] "
+)
+
+
 def _parse_args() -> Args:
     p = argparse.ArgumentParser(
         prog="corecoder",
         description="Minimal AI coding agent. Works with any OpenAI-compatible LLM.",
     )
-    p.add_argument("-m", "--model", help="Model name (default: $CORECODER_MODEL or gpt-5.5)")
+    p.add_argument(
+        "-m",
+        "--model",
+        help=f"Model name (default: $CORECODER_MODEL or {DEFAULT_MODEL})",
+    )
     p.add_argument("--base-url", help="API base URL (default: $OPENAI_BASE_URL)")
     p.add_argument("--api-key", help="API key (default: $OPENAI_API_KEY)")
     p.add_argument("-p", "--prompt", help="One-shot prompt (non-interactive mode)")
-    p.add_argument("--yes", action="store_true", help="Auto-approve every tool call (for scripts and CI)")
+    p.add_argument(
+        "--yes",
+        action="store_true",
+        help="Auto-approve every tool call (for scripts and CI)",
+    )
     p.add_argument("-r", "--resume", metavar="ID", help="Resume a saved session")
-    p.add_argument("-v", "--version", action="version", version=f"%(prog)s {__version__}")
+    p.add_argument(
+        "-v", "--version", action="version", version=f"%(prog)s {__version__}"
+    )
     return p.parse_args()
 
 
@@ -114,7 +151,9 @@ def main() -> None:
             if not args.model:
                 agent.llm.model = loaded["model"]
                 config.model = loaded["model"]
-            console.print(f"[green]Resumed session: {args.resume} (model: {agent.llm.model})[/green]")
+            console.print(
+                f"[green]Resumed session: {args.resume} (model: {agent.llm.model})[/green]"
+            )
         else:
             console.print(f"[red]Session '{args.resume}' not found.[/red]")
             sys.exit(1)
@@ -130,9 +169,15 @@ def main() -> None:
 
 def _ask_permission(tool_name: str, arguments: ToolArgs) -> str:
     """REPL consent prompt. Anything but a clear yes counts as a no."""
-    console.print(f"\n[bold yellow]permission requested:[/] [cyan]{tool_name}[/cyan]({_brief(arguments)})")
+    console.print(
+        f"\n[bold yellow]permission requested:[/] [cyan]{tool_name}[/cyan]({_brief(arguments)})"
+    )
     try:
-        answer = pt_prompt("  [y] allow once  [a] always allow this tool  [n] deny: ").strip().lower()
+        answer = (
+            pt_prompt("  [y] allow once  [a] always allow this tool  [n] deny: ")
+            .strip()
+            .lower()
+        )
     except (EOFError, KeyboardInterrupt):
         console.print("[dim]denied[/dim]")
         return "deny"
@@ -147,7 +192,9 @@ def _run_once(agent: Agent, prompt: str) -> None:
     """Non-interactive: run one prompt and exit."""
     perm = agent.permission
     if perm is not None and perm.ask is None and not perm.allow_all:
-        console.print("[dim]one-shot mode: mutating tools are refused unless you pass --yes[/dim]")
+        console.print(
+            "[dim]one-shot mode: mutating tools are refused unless you pass --yes[/dim]"
+        )
 
     def on_token(tok: str) -> None:
         print(tok, end="", flush=True)
@@ -170,9 +217,15 @@ def _run_once(agent: Agent, prompt: str) -> None:
 def _repl(agent: Agent, config: Config) -> None:
     """Interactive read-eval-print loop."""
     perm = agent.permission
-    mode = "auto-approve every tool call (--yes)" if (perm and perm.allow_all) else "ask before mutating tools"
+    mode = (
+        "auto-approve every tool call (--yes)"
+        if (perm and perm.allow_all)
+        else "ask before mutating tools"
+    )
     mcp_count = sum(1 for t in agent.tools if t.name.startswith("mcp__"))
-    project_root_line = f"\nProject root: [dim]{agent.project_root}[/dim]" if agent.project_root else ""
+    project_root_line = (
+        f"\nProject root: [dim]{agent.project_root}[/dim]" if agent.project_root else ""
+    )
     console.print(
         Panel(
             f"[bold]CoreCoder[/bold] v{__version__}\n"
@@ -185,7 +238,11 @@ def _repl(agent: Agent, config: Config) -> None:
                 if agent.hooks
                 else ""
             )
-            + (f"\nMCP: [cyan]{mcp_count} tools[/cyan] from ~/.corecoder/mcp.json" if mcp_count else "")
+            + (
+                f"\nMCP: [cyan]{mcp_count} tools[/cyan] from ~/.corecoder/mcp.json"
+                if mcp_count
+                else ""
+            )
             + "\nType [bold]/help[/bold] for commands, [bold]Ctrl+C[/bold] to cancel, [bold]quit[/bold] to exit.",
             border_style="blue",
         )
@@ -205,10 +262,14 @@ def _repl(agent: Agent, config: Config) -> None:
     def _newline(event: t.Any) -> None:
         event.current_buffer.insert_text("\n")
 
+    if not "CPROMPT" in os.environ:
+        os.environ["CPROMPT"] = DEFAULT_PROMPT
+
     while True:
         try:
+            prompt = render_prompt(agent, config)
             user_input = pt_prompt(
-                "You (plan) > " if agent.plan_mode else "You > ",
+                prompt,
                 history=history,
                 multiline=True,
                 key_bindings=kb,
@@ -222,85 +283,50 @@ def _repl(agent: Agent, config: Config) -> None:
             continue
 
         if user_input.startswith("!"):
-            _run_shell_input(user_input, agent)
+            cmd_shell(user_input, agent, config)
             continue
 
         # built-in commands
         if user_input.lower() in ("quit", "exit", "/quit", "/exit"):
             break
         if user_input == "/help":
-            _show_help()
+            cmd_help(user_input, agent, config)
             continue
         if user_input == "/reset":
-            agent.reset()
-            console.print("[yellow]Conversation reset.[/yellow]")
+            cmd_reset(user_input, agent, config)
             continue
         if user_input == "/plan":
-            agent.plan_mode = not agent.plan_mode
-            if agent.plan_mode:
-                console.print(
-                    "[yellow]Plan mode on.[/yellow] The agent can look but not touch: it will "
-                    "investigate read-only and present a plan. Type [bold]approve[/bold] to "
-                    "accept the plan, or [bold]/plan[/bold] again to exit."
-                )
-            else:
-                console.print("[yellow]Plan mode off.[/yellow]")
+            cmd_plan(user_input, agent, config)
             continue
         if agent.plan_mode and user_input.lower() in ("approve", "/approve"):
-            agent.plan_mode = False
-            console.print("[yellow]Plan mode off.[/yellow]")
-            user_input = "approve"  # the approval itself goes to the model, which then executes
+            cmd_approve(user_input, agent, config)
+            user_input = (
+                "approve"  # the approval itself goes to the model, which then executes
+            )
         if user_input == "/tokens":
-            p = agent.llm.total_prompt_tokens
-            c = agent.llm.total_completion_tokens
-            line = f"Tokens: [cyan]{p}[/cyan] prompt + [cyan]{c}[/cyan] completion = [bold]{p + c}[/bold] total"
-            console.print(line)
+            cmd_tokens(user_input, agent, config)
             continue
         if user_input == "/model" or user_input.startswith("/model "):
-            new_model = user_input[7:].strip() if user_input.startswith("/model ") else ""
-            if new_model:
-                agent.llm.model = new_model
-                config.model = new_model
-                console.print(f"Switched to [cyan]{new_model}[/cyan]")
-            else:
-                console.print(f"Current model: [cyan]{config.model}[/cyan]")
+            cmd_model(user_input, agent, config)
             continue
         if user_input == "/compact":
-            from .context import estimate_tokens
-
-            before = estimate_tokens(agent.messages)
-            compressed = agent.context.maybe_compress(agent.messages, agent.llm)
-            after = estimate_tokens(agent.messages)
-            if compressed:
-                console.print(f"[green]Compressed: {before} → {after} tokens ({len(agent.messages)} messages)[/green]")
-            else:
-                console.print(f"[dim]Nothing to compress ({before} tokens, {len(agent.messages)} messages)[/dim]")
+            cmd_compact(user_input, agent, config)
             continue
         if user_input == "/save":
-            sid = save_session(agent, config.model)
-            console.print(f"[green]Session saved: {sid}[/green]")
-            console.print(f"Resume with: corecoder -r {sid}")
+            cmd_save(user_input, agent, config)
             continue
         if user_input == "/diff":
-            if not agent.changed_files:
-                console.print("[dim]No files modified this session.[/dim]")
-            else:
-                console.print(f"[bold]Files modified this session ({len(agent.changed_files)}):[/bold]")
-                for f in sorted(agent.changed_files):
-                    console.print(f"  [cyan]{f}[/cyan]")
+            cmd_diff(user_input, agent, config)
             continue
         if user_input == "/sessions":
-            sessions = list_sessions()
-            if not sessions:
-                console.print("[dim]No saved sessions.[/dim]")
-            else:
-                for s in sessions:
-                    console.print(f"  [cyan]{s['id']}[/cyan] ({s['model']}, {s['saved_at']}) {s['preview']}")
+            cmd_sessions(user_input, agent, config)
             continue
 
         # an unknown /command shouldn't be sent to the model as a prompt
         if user_input.startswith("/"):
-            console.print(f"[yellow]Unknown command: {user_input.split()[0]} (try /help)[/yellow]")
+            console.print(
+                f"[yellow]Unknown command: {user_input.split()[0]} (try /help)[/yellow]"
+            )
             continue
 
         # call the agent
@@ -332,92 +358,6 @@ def _repl(agent: Agent, config: Config) -> None:
             console.print(f"\n[red]Error: {e}[/red]")
 
 
-def _run_shell_input(user_input: str, agent: Agent | None = None) -> None:
-    """Handle REPL lines prefixed with ! as direct shell commands."""
-    command = user_input[1:].strip()
-    if not command:
-        shell = os.environ.get("SHELL") or ("cmd" if os.name == "nt" else "/bin/sh")
-        try:
-            subprocess.run(shell, shell=False, check=False)
-        except FileNotFoundError:
-            console.print(f"[red]Shell not found: {shell}[/red]")
-        return
-
-    if command == "cd" or command.startswith("cd "):
-        target = command[2:].strip()
-        if not target and agent is not None:
-            target = str(agent.project_root)
-        if not target:
-            return
-        try:
-            unquoted = shlex.split(target)
-        except ValueError as e:
-            console.print(f"[red]cd: {e}[/red]")
-            return
-        if len(unquoted) == 1:
-            target = unquoted[0]
-        try:
-            os.chdir(os.path.expandvars(os.path.expanduser(target)))
-        except OSError as e:
-            console.print(f"[red]cd: {e}[/red]")
-            return
-        cwd = os.getcwd()
-        set_cwd(cwd)
-        if agent is not None:
-            agent.project_root = find_project_root()
-            agent.guidance_path, agent.project_guidance = load_project_guidance(agent.project_root)
-            agent._system = system_prompt(
-                agent.tools,
-                project_root=str(agent.project_root) if agent.project_root else "",
-                project_guidance=agent.project_guidance,
-                guidance_path=str(agent.guidance_path) if agent.guidance_path else None,
-            )
-        console.print(f"[dim]cwd: {cwd}[/dim]")
-        return
-
-    try:
-        proc = subprocess.run(command, shell=True, check=False)
-    except KeyboardInterrupt:
-        console.print("\n[yellow]Interrupted.[/yellow]")
-        return
-    except Exception as e:  # noqa: BLE001
-        console.print(f"[red]Error running command: {e}[/red]")
-        return
-    if proc.returncode:
-        console.print(f"[dim][exit code: {proc.returncode}][/dim]")
-
-
-def _show_help() -> None:
-    console.print(
-        Panel(
-            "[bold]Commands:[/bold]\n"
-            "  /help          Show this help\n"
-            "  /reset         Clear conversation history\n"
-            "  /model         Show current model\n"
-            "  /model <name>  Switch model mid-conversation\n"
-            "  /tokens        Show token usage\n"
-            "  /compact       Compress conversation context\n"
-            "  /diff          Show files modified this session\n"
-            "  /undo          Revert the most recent file change\n"
-            "  /plan          Toggle plan mode: read-only, then a plan to approve\n"
-            "  /save          Save session to disk\n"
-            "  /sessions      List saved sessions\n"
-            "  quit           Exit CoreCoder\n"
-            "\n"
-            "[bold]Shell:[/bold]\n"
-            "  !              Start an interactive shell\n"
-            "  !cd <path>     Change current directory\n"
-            "  !<command>     Run a shell command directly\n"
-            "\n"
-            "[bold]Input:[/bold]\n"
-            "  Enter          Submit message\n"
-            "  Esc+Enter      Insert newline (for pasting code)",
-            title="CoreCoder Help",
-            border_style="dim",
-        )
-    )
-
-
 def _brief_format(k: str, v: t.Any) -> str:
     """Return a brief string representation of a key-value pair."""
     if k in ("path", "file_path"):
@@ -427,5 +367,71 @@ def _brief_format(k: str, v: t.Any) -> str:
 
 
 def _brief(kwargs: ToolArgs, maxlen: int = 140) -> str:
-    s = ", ".join(_brief_format(k, v) for k, v in kwargs.items() if k not in ("timeout", "old_string", "new_string"))
+    s = ", ".join(
+        _brief_format(k, v)
+        for k, v in kwargs.items()
+        if k not in ("timeout", "old_string", "new_string")
+    )
     return s[:maxlen] + ("..." if len(s) > maxlen else "")
+
+
+def render_prompt(agent: Agent, config: Config, prompt: str | None = None) -> ANSI:
+    """
+    Render a Bash-like PS1 using Rich markup.
+
+    Supported Bash escapes:
+        \\u  username
+        \\h  short hostname
+        \\H  full hostname
+        \\w  current working directory
+        \\W  basename of current directory
+        \\t  current time HH:MM:SS
+        \\d  current date
+        \\n  newline
+        \\r  carriage return
+        \\p  plan mode indicator (if enabled)
+
+    Rich markup is also supported, e.g.:
+
+        [bold cyan]\\u[/]@[green]\\h[/]:[yellow]\\W[/] [bold]❯[/]
+    """
+    cprompt: str = prompt or os.environ.get("CPROMPT", DEFAULT_PROMPT)  # type: ignore[assignment]
+
+    replacements = {
+        "u": getpass.getuser(),  # username
+        "h": socket.gethostname().split(".", 1)[0],  # short hostname
+        "H": socket.gethostname(),  # full hostname
+        "w": os.getcwd(),  # current working directory
+        "W": (os.path.basename(os.getcwd()) or os.sep),  # basename of current directory (or / if root)
+        "t": datetime.now().strftime("%H:%M:%S"),  # current time
+        "d": datetime.now().strftime("%a %b %d"),  # current date
+        "n": "\n",  # newline
+        "r": "\r",  # carriage return
+        "m": config.model,  # model name
+        "p": agent.plan_mode and " [dim](plan)[/dim]" or "",  # plan mode indicator
+    }
+
+    # First expand Bash-style escapes
+    expanded = []
+    i = 0
+
+    while i < len(cprompt):
+        if cprompt[i] == "\\" and i + 1 < len(cprompt):
+            code = cprompt[i + 1]
+
+            if code in replacements:
+                expanded.append(replacements[code])
+                i += 2
+                continue
+
+        expanded.append(cprompt[i])
+        i += 1
+
+    # Let Rich parse its markup
+    text = Text.from_markup("".join(expanded))
+
+    # Export Rich's rendering to ANSI
+    with console.capture() as capture:
+        console.print(text, end="")
+
+    return ANSI(capture.get())

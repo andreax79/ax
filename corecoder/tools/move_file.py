@@ -50,6 +50,6 @@ class MoveFileTool(Tool):
                 dst.unlink()
             move(str(src), str(dst))
             kind = "directory" if dst.is_dir() else "file"
-            return ToolResult(f"Moved {kind} {source} to {destination}", changed_files=[str(src), str(dst)])
+            return ToolResult(f"Moved {kind} {source} to {destination}", changed_files=[src, dst])
         except Exception as e:  # noqa: BLE001
             return f"Error: {e}"

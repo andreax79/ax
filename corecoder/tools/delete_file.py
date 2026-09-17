@@ -39,6 +39,6 @@ class DeleteFileTool(Tool):
             else:
                 target.unlink()
                 kind = "file"
-            return ToolResult(f"Deleted {kind} {path}", changed_files=[str(target)])
+            return ToolResult(f"Deleted {kind} {path}", changed_files=[target])
         except Exception as e:  # noqa: BLE001
             return f"Error: {e}"
