@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from .base import Tool
+from .gitignore import is_ignored, load_project_gitignore
 
 # skip these dirs to avoid noise
 _SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".tox", "dist", "build"}
@@ -45,8 +46,9 @@ class GrepTool(Tool):
         if not base.exists():
             return f"Error: {path} not found"
 
+        ignore_root, ignore_rules = load_project_gitignore(base)
         if base.is_file():
-            files = [base]
+            files = [] if is_ignored(base, ignore_root, ignore_rules) else [base]
             scan_truncated = False
         else:
             files, scan_truncated = self._walk(base, include)
@@ -77,13 +79,16 @@ class GrepTool(Tool):
 
     @staticmethod
     def _walk(root: Path, include: str | None) -> tuple[list[Path], bool]:
-        """Walk dir tree, skipping junk dirs."""
+        """Walk dir tree, skipping junk dirs and project-root .gitignore entries."""
+        ignore_root, ignore_rules = load_project_gitignore(root)
         results = []
         truncated = False
         for item in root.rglob(include or "*"):
             # skip junk dirs *inside* the search root - matching item.parts would
             # also catch an ancestor named e.g. "build" and hide the whole tree
             if any(part in _SKIP_DIRS for part in item.relative_to(root).parts):
+                continue
+            if is_ignored(item, ignore_root, ignore_rules):
                 continue
             if item.is_file():
                 results.append(item)

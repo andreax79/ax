@@ -267,6 +267,21 @@ def test_glob_path_is_file():
     assert "not a directory" in r.lower()
 
 
+def test_glob_honors_project_root_gitignore(tmp_path):
+    (tmp_path / ".gitignore").write_text("ignored/\n*.tmp\n", encoding="utf-8")
+    (tmp_path / "ignored").mkdir()
+    (tmp_path / "ignored" / "hidden.py").write_text("x\n", encoding="utf-8")
+    (tmp_path / "visible.py").write_text("x\n", encoding="utf-8")
+    (tmp_path / "hidden.tmp").write_text("x\n", encoding="utf-8")
+
+    glob_t = get_tool("glob")
+    r = glob_t.execute(pattern="**/*", path=str(tmp_path))
+
+    assert "visible.py" in r
+    assert "hidden.py" not in r
+    assert "hidden.tmp" not in r
+
+
 # --- grep ---
 
 def test_grep_finds_pattern():
@@ -318,6 +333,21 @@ def test_grep_skips_junk_dirs_inside_root(tmp_path):
     r = grep.execute(pattern="needle", path=str(tmp_path))
     assert "real.py" in r
     assert "node_modules" not in r
+
+
+def test_grep_honors_project_root_gitignore(tmp_path):
+    (tmp_path / ".gitignore").write_text("ignored/\n*.tmp\n", encoding="utf-8")
+    (tmp_path / "ignored").mkdir()
+    (tmp_path / "ignored" / "hidden.py").write_text("needle\n", encoding="utf-8")
+    (tmp_path / "visible.py").write_text("needle\n", encoding="utf-8")
+    (tmp_path / "hidden.tmp").write_text("needle\n", encoding="utf-8")
+
+    grep = get_tool("grep")
+    r = grep.execute(pattern="needle", path=str(tmp_path))
+
+    assert "visible.py" in r
+    assert "hidden.py" not in r
+    assert "hidden.tmp" not in r
 
 
 # --- ag ---

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import ClassVar
 
 from .base import Tool
+from .gitignore import is_ignored, load_project_gitignore
 
 
 class GlobTool(Tool):
@@ -35,7 +36,8 @@ class GlobTool(Tool):
             if not base.is_dir():
                 return f"Error: {path} is not a directory"
 
-            hits = list(base.glob(pattern))
+            ignore_root, ignore_rules = load_project_gitignore(base)
+            hits = [hit for hit in base.glob(pattern) if not is_ignored(hit, ignore_root, ignore_rules)]
             # sort by mtime, newest first
             hits.sort(key=lambda p: p.stat().st_mtime if p.exists() else 0, reverse=True)
 
