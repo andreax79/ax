@@ -5,6 +5,7 @@ import os
 import shlex
 import subprocess
 import sys
+import typing as t
 
 from prompt_toolkit import prompt as pt_prompt
 from prompt_toolkit.history import FileHistory
@@ -415,7 +416,13 @@ def _show_help():
         border_style="dim",
     ))
 
+def _brief_format(k: str, v: t.Any) -> str:
+    """Return a brief string representation of a key-value pair."""
+    if k in ("path", "file_path"):
+        return f"{k}={repr(v)}"
+    else:
+        return f"{k}={repr(v)[:40]}"
 
-def _brief(kwargs: dict, maxlen: int = 80) -> str:
-    s = ", ".join(f"{k}={repr(v)[:40]}" for k, v in kwargs.items())
+def _brief(kwargs: dict, maxlen: int = 140) -> str:
+    s = ", ".join(_brief_format(k, v) for k, v in kwargs.items())
     return s[:maxlen] + ("..." if len(s) > maxlen else "")
