@@ -12,8 +12,8 @@ import pytest
 
 from corecoder import mcp
 from corecoder.agent import Agent
-from corecoder.demo import ScriptedLLM
 from corecoder.hooks import Hooks
+from tests.demo import ScriptedLLM
 from corecoder.llm import LLMResponse, ToolCall
 from corecoder.mcp import MCPError, load_mcp_tools
 from corecoder.permissions import Permission

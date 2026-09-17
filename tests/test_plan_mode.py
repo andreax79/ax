@@ -1,8 +1,8 @@
 """Plan mode: read-only investigation, then a plan the user approves."""
 
 from corecoder import Agent, Config, cli
-from corecoder.demo import ScriptedLLM
 from corecoder.llm import LLMResponse, ToolCall
+from tests.demo import ScriptedLLM
 from corecoder.permissions import Permission
 from corecoder.tools import get_tool
 

@@ -1,8 +1,8 @@
 """Consent gating for mutating tools: the Permission layer and its wiring."""
 
 from corecoder import Agent
-from corecoder.demo import ScriptedLLM
 from corecoder.llm import LLMResponse, ToolCall
+from tests.demo import ScriptedLLM
 from corecoder.permissions import Permission
 from corecoder.tools import get_tool
 

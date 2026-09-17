@@ -3,8 +3,8 @@
 import logging
 
 from corecoder import Agent
-from corecoder.demo import ScriptedLLM
 from corecoder.hooks import Hooks, load_hooks
+from tests.demo import ScriptedLLM
 from corecoder.llm import LLMResponse, ToolCall
 from corecoder.permissions import Permission
 from corecoder.tools import get_tool

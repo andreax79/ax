@@ -12,9 +12,9 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
 
-from .agent import Agent
-from .cli import _brief
-from .llm import LLMResponse, ToolCall
+from corecoder.agent import Agent
+from corecoder.cli import _brief
+from corecoder.llm import LLMResponse, ToolCall
 
 console = Console()
 

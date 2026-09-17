@@ -4,5 +4,6 @@ __version__ = "0.6.0"
 
 from corecoder.agent import Agent
 from corecoder.config import Config
+from corecoder.llm import LLM
 
-__all__ = ["Agent", "Config", "__version__"]
+__all__ = ["Agent", "Config", "LLM", "__version__"]
