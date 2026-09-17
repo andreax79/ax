@@ -1,5 +1,6 @@
 """Tool registry."""
 
+from .ag import AgTool
 from .agent import AgentTool
 from .bash import BashTool
 from .edit import EditFileTool
@@ -16,6 +17,7 @@ ALL_TOOLS = [
     EditFileTool(),
     GlobTool(),
     GrepTool(),
+    AgTool(),
     TodoWriteTool(),
     AgentTool(),
 ]
