@@ -13,17 +13,21 @@ can never arrive. The refusal travels back as an ordinary tool result, so
 the loop survives and the model can route around it.
 """
 
+import typing as t
+
+AskCallback = t.Callable[[str, dict[str, t.Any]], str]
+
 
 class Permission:
     """Session-scoped consent state. Pure: no I/O, the CLI hands in `ask`."""
 
-    def __init__(self, ask=None, allow_all: bool = False):
+    def __init__(self, ask: AskCallback | None = None, allow_all: bool = False) -> None:
         # ask(tool_name, arguments) -> "once" | "always" | "deny"
         self.ask = ask
         self.allow_all = allow_all
         self._always: set[str] = set()
 
-    def check(self, tool_name: str, arguments: dict) -> str | None:
+    def check(self, tool_name: str, arguments: dict[str, t.Any]) -> str | None:
         """Decide one call. None lets it through; a string is the refusal
         the model receives as its tool result."""
         if self.allow_all or tool_name in self._always:

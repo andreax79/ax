@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-def _load_dotenv():
+def _load_dotenv() -> None:
     """Load .env from cwd, walking up to home dir."""
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # type: ignore[import]
 
     # search cwd first, then parent dirs up to ~
     env_path = Path(".env")

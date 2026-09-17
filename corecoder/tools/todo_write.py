@@ -14,7 +14,8 @@ shared list is what lets the whole pattern fit in a file this small.
 
 import typing as t
 
-from .base import Tool
+from ..utils import render_tasks
+from .base import Tool, ToolResult
 
 _VALID_STATUS = ("pending", "in_progress", "done")
 
@@ -54,10 +55,7 @@ class TodoWriteTool(Tool):
         "required": ["tasks"],
     }
 
-    def __init__(self) -> None:
-        self._tasks: list[dict[str, t.Any]] = []
-
-    def execute(self, tasks: list) -> str:  # type: ignore
+    def execute(self, tasks: list) -> str | ToolResult:  # type: ignore
         if not isinstance(tasks, list):
             return "Error: tasks must be a list of {content, status} objects"
         checked = []
@@ -70,11 +68,7 @@ class TodoWriteTool(Tool):
                 return f"Error: task {i} has invalid status {status!r} (use pending, in_progress, or done)"
             checked.append({"content": content.strip(), "status": status})
         # validate everything before replacing, so a bad call leaves the old list intact
-        self._tasks = checked
         if not checked:
-            return "Task list cleared."
-        return "Task list updated:\n" + self.render()
-
-    def render(self) -> str:
-        """The checklist as text; Agent injects this into the system context."""
-        return "\n".join(f"{i}. [{t['status']}] {t['content']}" for i, t in enumerate(self._tasks, 1))
+            return ToolResult("Task list cleared.", todo_tasks=checked)
+        else:
+            return ToolResult("Task list updated:\n" + render_tasks(checked), todo_tasks=checked)

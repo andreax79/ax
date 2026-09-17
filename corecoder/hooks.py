@@ -15,24 +15,28 @@ import json
 import logging
 import subprocess
 from pathlib import Path
+from typing import Any, cast
 
 log = logging.getLogger(__name__)
 
 HOOKS_FILE = Path.home() / ".corecoder" / "hooks.json"
 TIMEOUT = 10  # seconds; a hung hook must not hang the agent
 
+Hook = dict[str, Any]
+Payload = dict[str, Any]
+
 
 class Hooks:
     """Pre/post shell commands matched against tool names."""
 
-    def __init__(self, pre: list[dict], post: list[dict]):
+    def __init__(self, pre: list[Hook], post: list[Hook]) -> None:
         self.pre = pre
         self.post = post
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.pre or self.post)
 
-    def run_pre(self, tool_name: str, tool_input: dict) -> str | None:
+    def run_pre(self, tool_name: str, tool_input: Payload) -> str | None:
         """Fire matching PreToolUse hooks. A string return blocks the call and
         is what the model gets as the tool result; None means carry on."""
         payload = {"tool_name": tool_name, "tool_input": tool_input}
@@ -43,7 +47,7 @@ class Hooks:
                 return "Blocked by hook: " + reason
         return None
 
-    def run_post(self, tool_name: str, tool_input: dict, result: str):
+    def run_post(self, tool_name: str, tool_input: Payload, result: str) -> None:
         """PostToolUse hooks observe a finished call; they can never block."""
         payload = {"tool_name": tool_name, "tool_input": tool_input, "tool_response": result}
         for hook in self.post:
@@ -60,12 +64,12 @@ def load_hooks(path: Path = HOOKS_FILE) -> Hooks:
     except (json.JSONDecodeError, OSError) as e:
         log.warning("ignoring %s: %s", path, e)
         return Hooks([], [])
-    pre = [h for h in data.get("PreToolUse", []) if h.get("command")]
-    post = [h for h in data.get("PostToolUse", []) if h.get("command")]
+    pre = [cast(Hook, h) for h in data.get("PreToolUse", []) if h.get("command")]
+    post = [cast(Hook, h) for h in data.get("PostToolUse", []) if h.get("command")]
     return Hooks(pre, post)
 
 
-def _fire(hook: dict, payload: dict):
+def _fire(hook: Hook, payload: Payload) -> subprocess.CompletedProcess[str] | None:
     """Run one hook if its matcher applies (exact tool name or "*"), payload
     as JSON on stdin. None means it didn't match or failed and was skipped."""
     matcher = hook.get("matcher", "")

@@ -100,7 +100,7 @@ class BashTool(Tool):
             return f"Error running command: {e}"
 
 
-def set_cwd(path: str | os.PathLike):
+def set_cwd(path: str | os.PathLike[str]) -> None:
     """Set the tracked working directory for bash commands on this thread."""
     _local.cwd = os.fspath(path)
 
@@ -113,7 +113,7 @@ def _check_dangerous(cmd: str) -> str | None:
     return None
 
 
-def _update_cwd(command: str, current_cwd: str):
+def _update_cwd(command: str, current_cwd: str) -> None:
     """Track directory changes from cd commands, per thread."""
     # walk each cd in a && chain, resolving relative targets against the dir the
     # previous cd landed in (not the original cwd) so `cd a && cd b` ends in a/b

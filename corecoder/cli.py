@@ -7,12 +7,12 @@ import subprocess
 import sys
 import typing as t
 
-from prompt_toolkit import prompt as pt_prompt
-from prompt_toolkit.history import FileHistory
-from prompt_toolkit.key_binding import KeyBindings
-from rich.console import Console
-from rich.markdown import Markdown
-from rich.panel import Panel
+from prompt_toolkit import prompt as pt_prompt  # type: ignore[import]
+from prompt_toolkit.history import FileHistory  # type: ignore[import]
+from prompt_toolkit.key_binding import KeyBindings  # type: ignore[import]
+from rich.console import Console  # type: ignore[import]
+from rich.markdown import Markdown  # type: ignore[import]
+from rich.panel import Panel  # type: ignore[import]
 
 from . import __version__
 from .agent import Agent
@@ -26,12 +26,15 @@ from .prompt import system_prompt
 from .session import list_sessions, load_session, save_session
 from .tools import get_tools
 from .tools.bash import set_cwd
-from .utils import find_project_root
+from .utils import find_project_root, render_tasks
 
 console = Console()
 
+Args = argparse.Namespace
+ToolArgs = dict[str, t.Any]
 
-def _parse_args():
+
+def _parse_args() -> Args:
     p = argparse.ArgumentParser(
         prog="corecoder",
         description="Minimal AI coding agent. Works with any OpenAI-compatible LLM.",
@@ -46,7 +49,7 @@ def _parse_args():
     return p.parse_args()
 
 
-def main():
+def main() -> None:
     args = _parse_args()
     config = Config.from_env()
 
@@ -105,13 +108,12 @@ def main():
 
     # resume saved session
     if args.resume:
-        loaded = load_session(args.resume)
+        loaded = load_session(agent, args.resume)
         if loaded:
-            agent.messages, loaded_model = loaded
             # restore the model from the saved session unless overridden by CLI
             if not args.model:
-                agent.llm.model = loaded_model
-                config.model = loaded_model
+                agent.llm.model = loaded["model"]
+                config.model = loaded["model"]
             console.print(f"[green]Resumed session: {args.resume} (model: {agent.llm.model})[/green]")
         else:
             console.print(f"[red]Session '{args.resume}' not found.[/red]")
@@ -126,7 +128,7 @@ def main():
     _repl(agent, config)
 
 
-def _ask_permission(tool_name: str, arguments: dict) -> str:
+def _ask_permission(tool_name: str, arguments: ToolArgs) -> str:
     """REPL consent prompt. Anything but a clear yes counts as a no."""
     console.print(f"\n[bold yellow]permission requested:[/] [cyan]{tool_name}[/cyan]({_brief(arguments)})")
     try:
@@ -141,16 +143,16 @@ def _ask_permission(tool_name: str, arguments: dict) -> str:
     return "deny"
 
 
-def _run_once(agent: Agent, prompt: str):
+def _run_once(agent: Agent, prompt: str) -> None:
     """Non-interactive: run one prompt and exit."""
     perm = agent.permission
     if perm is not None and perm.ask is None and not perm.allow_all:
         console.print("[dim]one-shot mode: mutating tools are refused unless you pass --yes[/dim]")
 
-    def on_token(tok):
+    def on_token(tok: str) -> None:
         print(tok, end="", flush=True)
 
-    def on_tool(name, kwargs):
+    def on_tool(name: str, kwargs: ToolArgs) -> None:
         console.print(f"\n[dim]> {name}({_brief(kwargs)})[/dim]")
 
     try:
@@ -165,7 +167,7 @@ def _run_once(agent: Agent, prompt: str):
     print()
 
 
-def _repl(agent: Agent, config: Config):
+def _repl(agent: Agent, config: Config) -> None:
     """Interactive read-eval-print loop."""
     perm = agent.permission
     mode = "auto-approve every tool call (--yes)" if (perm and perm.allow_all) else "ask before mutating tools"
@@ -195,12 +197,12 @@ def _repl(agent: Agent, config: Config):
     # Enter submits, Escape+Enter inserts a newline (for pasting code blocks etc.)
     kb = KeyBindings()
 
-    @kb.add("enter")
-    def _submit(event):
+    @kb.add("enter")  # type: ignore[misc]
+    def _submit(event: t.Any) -> None:
         event.current_buffer.validate_and_handle()
 
-    @kb.add("escape", "enter")
-    def _newline(event):
+    @kb.add("escape", "enter")  # type: ignore[misc]
+    def _newline(event: t.Any) -> None:
         event.current_buffer.insert_text("\n")
 
     while True:
@@ -275,7 +277,7 @@ def _repl(agent: Agent, config: Config):
                 console.print(f"[dim]Nothing to compress ({before} tokens, {len(agent.messages)} messages)[/dim]")
             continue
         if user_input == "/save":
-            sid = save_session(agent.messages, config.model)
+            sid = save_session(agent, config.model)
             console.print(f"[green]Session saved: {sid}[/green]")
             console.print(f"Resume with: corecoder -r {sid}")
             continue
@@ -304,15 +306,16 @@ def _repl(agent: Agent, config: Config):
         # call the agent
         streamed: list[str] = []
 
-        def on_token(tok, streamed=streamed):
+        def on_token(tok: str, streamed: list[str] = streamed) -> None:
             streamed.append(tok)
             print(tok, end="", flush=True)
 
-        def on_tool(name, kwargs):
-            if agent._todo is not None:
-                todo = agent._todo.render()
-            else:
-                todo = ""
+        def on_tool(name: str, kwargs: ToolArgs) -> None:
+            # if agent._todo is not None:
+            #     todo = agent._todo.render()
+            # else:
+            #     todo = ""
+            todo = render_tasks(agent.todo_tasks)
             console.print(f"[dim]{todo}\n> {name}({_brief(kwargs)})[/dim]")
 
         try:
@@ -329,7 +332,7 @@ def _repl(agent: Agent, config: Config):
             console.print(f"\n[red]Error: {e}[/red]")
 
 
-def _run_shell_input(user_input: str, agent: Agent | None = None):
+def _run_shell_input(user_input: str, agent: Agent | None = None) -> None:
     """Handle REPL lines prefixed with ! as direct shell commands."""
     command = user_input[1:].strip()
     if not command:
@@ -365,7 +368,7 @@ def _run_shell_input(user_input: str, agent: Agent | None = None):
             agent.guidance_path, agent.project_guidance = load_project_guidance(agent.project_root)
             agent._system = system_prompt(
                 agent.tools,
-                project_root=agent.project_root,
+                project_root=str(agent.project_root) if agent.project_root else "",
                 project_guidance=agent.project_guidance,
                 guidance_path=str(agent.guidance_path) if agent.guidance_path else None,
             )
@@ -384,7 +387,7 @@ def _run_shell_input(user_input: str, agent: Agent | None = None):
         console.print(f"[dim][exit code: {proc.returncode}][/dim]")
 
 
-def _show_help():
+def _show_help() -> None:
     console.print(
         Panel(
             "[bold]Commands:[/bold]\n"
@@ -423,6 +426,6 @@ def _brief_format(k: str, v: t.Any) -> str:
         return f"{k}={repr(v)[:40]}"
 
 
-def _brief(kwargs: dict, maxlen: int = 140) -> str:
+def _brief(kwargs: ToolArgs, maxlen: int = 140) -> str:
     s = ", ".join(_brief_format(k, v) for k, v in kwargs.items() if k not in ("timeout", "old_string", "new_string"))
     return s[:maxlen] + ("..." if len(s) > maxlen else "")

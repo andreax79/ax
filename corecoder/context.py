@@ -14,10 +14,12 @@ CoreCoder implements the same idea in 3 layers:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .llm import LLM
+
+Message = dict[str, Any]
 
 
 def _approx_tokens(text: str) -> int:
@@ -25,7 +27,7 @@ def _approx_tokens(text: str) -> int:
     return len(text) // 3
 
 
-def estimate_tokens(messages: list[dict]) -> int:
+def estimate_tokens(messages: list[Message]) -> int:
     total = 0
     for m in messages:
         if m.get("content"):
@@ -43,7 +45,7 @@ class ContextManager:
         self._summarize_at = int(max_tokens * 0.70)  # 70% -> LLM summarize
         self._collapse_at = int(max_tokens * 0.90)  # 90% -> hard collapse
 
-    def maybe_compress(self, messages: list[dict], llm: LLM | None = None) -> bool:
+    def maybe_compress(self, messages: list[Message], llm: LLM | None = None) -> bool:
         """Apply compression layers as needed. Returns True if any compression happened."""
         current = estimate_tokens(messages)
         compressed = False
@@ -66,7 +68,7 @@ class ContextManager:
         return compressed
 
     @staticmethod
-    def _snip_tool_outputs(messages: list[dict]) -> bool:
+    def _snip_tool_outputs(messages: list[Message]) -> bool:
         """Layer 1: Truncate tool results over 1500 chars to their first/last lines.
 
         This mirrors Claude Code's HISTORY_SNIP which replaces old tool outputs
@@ -89,7 +91,7 @@ class ContextManager:
         return changed
 
     @staticmethod
-    def _safe_split(messages: list[dict], keep_recent: int) -> int:
+    def _safe_split(messages: list[Message], keep_recent: int) -> int:
         """Index where the kept tail should start.
 
         Walk the boundary back so a 'tool' result is never separated from the
@@ -101,7 +103,7 @@ class ContextManager:
             split -= 1
         return split
 
-    def _summarize_old(self, messages: list[dict], llm: LLM | None, keep_recent: int = 8) -> bool:
+    def _summarize_old(self, messages: list[Message], llm: LLM | None, keep_recent: int = 8) -> bool:
         """Layer 2: Summarize old conversation, keep recent messages intact."""
         if len(messages) <= keep_recent:
             return False
@@ -128,7 +130,7 @@ class ContextManager:
         messages.extend(tail)
         return True
 
-    def _hard_collapse(self, messages: list[dict], llm: LLM | None):
+    def _hard_collapse(self, messages: list[Message], llm: LLM | None) -> None:
         """Layer 3: Emergency compression. Keep only last 4 messages + summary."""
         split = self._safe_split(messages, 4 if len(messages) > 4 else 2)
         tail = messages[split:]
@@ -149,7 +151,7 @@ class ContextManager:
         )
         messages.extend(tail)
 
-    def _get_summary(self, messages: list[dict], llm: LLM | None) -> str:
+    def _get_summary(self, messages: list[Message], llm: LLM | None) -> str:
         """Generate summary via LLM or fallback to extraction."""
         flat = self._flatten(messages)
 
@@ -179,7 +181,7 @@ class ContextManager:
         return self._extract_key_info(messages)
 
     @staticmethod
-    def _flatten(messages: list[dict]) -> str:
+    def _flatten(messages: list[Message]) -> str:
         parts = []
         for m in messages:
             role = m.get("role", "?")
@@ -189,7 +191,7 @@ class ContextManager:
         return "\n".join(parts)
 
     @staticmethod
-    def _extract_key_info(messages: list[dict]) -> str:
+    def _extract_key_info(messages: list[Message]) -> str:
         """Fallback: extract file paths, errors, and decisions without LLM."""
         import re
 

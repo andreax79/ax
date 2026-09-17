@@ -9,7 +9,7 @@ GUIDANCE_FILES = ("AGENT.md", "AGENTS.md", "CLAUDE.md", ".cursorrules")
 MAX_GUIDANCE_CHARS = 20_000
 
 
-def load_project_guidance(project_root: str | os.PathLike | None) -> tuple[Path | None, str]:
+def load_project_guidance(project_root: str | os.PathLike[str] | None) -> tuple[Path | None, str]:
     """Load the highest-priority project guidance file, if one exists.
 
     These files are repo-controlled hints for the agent.  They are injected into

@@ -2,6 +2,10 @@
 
 import os
 import platform
+import typing as t
+
+if t.TYPE_CHECKING:
+    from .tools.base import Tool
 
 # appended to the system prompt only while plan mode is on
 PLAN_MODE_PROMPT = """\
@@ -12,7 +16,7 @@ task, present the plan as a numbered list and stop. Do not execute any of it
 until the user approves."""
 
 
-def system_prompt(tools, project_root: str, project_guidance: str = "", guidance_path: str | None = None) -> str:
+def system_prompt(tools: list["Tool"], project_root: str, project_guidance: str = "", guidance_path: str | None = None) -> str:
     cwd = os.getcwd()
     project_root_line = f"\n- Project root: {project_root}" if project_root else ""
     guidance_line = f"\n- Project guidance: {guidance_path}" if guidance_path else ""

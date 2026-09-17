@@ -1,4 +1,4 @@
-"""Core agent loop.
+"""Core agent loop
 
 This is the heart of CoreCoder.  The pattern is simple:
 
@@ -11,6 +11,7 @@ which means it's done working and ready to report back.
 
 import concurrent.futures
 import inspect
+import typing as t
 
 from .context import ContextManager
 from .llm import LLM, ToolCall
@@ -18,8 +19,7 @@ from .project_guidance import load_project_guidance
 from .prompt import PLAN_MODE_PROMPT, system_prompt
 from .tools import Tool, ToolResult, get_tools
 from .tools.agent import AgentTool
-from .tools.todo_write import TodoWriteTool
-from .utils import find_project_root
+from .utils import find_project_root, render_tasks
 
 
 class Agent:
@@ -29,22 +29,22 @@ class Agent:
         tools: list[Tool] | None = None,
         max_context_tokens: int = 128_000,
         max_rounds: int = 50,
-        permission=None,
-        hooks=None,
-    ):
+        permission: t.Any = None,
+        hooks: t.Any = None,
+    ) -> None:
         self.llm = llm
         self.project_root = find_project_root()
         self.tools = tools if tools is not None else get_tools()
         self.permission = permission
         self.hooks = hooks
-        self._tool_by_name = {t.name: t for t in self.tools}
-        self.messages: list[dict] = []
+        self._tool_by_name = {tool.name: tool for tool in self.tools}
+        self.messages: list[dict[str, t.Any]] = []
         self.context = ContextManager(max_tokens=max_context_tokens)
         self.max_rounds = max_rounds
         self.guidance_path, self.project_guidance = load_project_guidance(self.project_root)
         self._system = system_prompt(
             self.tools,
-            project_root=self.project_root,
+            project_root=str(self.project_root) if self.project_root else "",
             project_guidance=self.project_guidance,
             guidance_path=str(self.guidance_path) if self.guidance_path else None,
         )
@@ -52,13 +52,13 @@ class Agent:
         self.changed_files: set[str] = set()  # track files changed this session for /diff
 
         # wire up sub-agent capability
-        for t in self.tools:
-            if isinstance(t, AgentTool):
-                t._parent_agent = self
+        for tool in self.tools:
+            if isinstance(tool, AgentTool):
+                t.cast(t.Any, tool)._parent_agent = self
 
-        self._todo = next((t for t in self.tools if isinstance(t, TodoWriteTool)), None)
+        self.todo_tasks: list[dict[str, t.Any]] = []
 
-    def _full_messages(self) -> list[dict]:
+    def _full_messages(self) -> list[dict[str, t.Any]]:
         system = self._system
         # re-injected every round, like the task list below, so a toggle made
         # between turns takes effect on the very next request
@@ -66,16 +66,21 @@ class Agent:
             system += "\n\n" + PLAN_MODE_PROMPT
         # the task list is re-injected every round, so the model always sees the
         # current state rather than a stale copy buried in old tool results
-        if self._todo is not None:
-            rendered = self._todo.render()
+        if self.todo_tasks is not None:
+            rendered = render_tasks(self.todo_tasks)
             if rendered:
                 system += "\n\n# Current task list\n" + rendered
         return [{"role": "system", "content": system}] + self.messages
 
-    def _tool_schemas(self) -> list[dict]:
+    def _tool_schemas(self) -> list[dict[str, t.Any]]:
         return [t.schema() for t in self.tools]
 
-    def chat(self, user_input: str, on_token=None, on_tool=None) -> str:
+    def chat(
+        self,
+        user_input: str,
+        on_token: t.Callable[[str], None] | None = None,
+        on_tool: t.Callable[[str, dict[str, t.Any]], None] | None = None,
+    ) -> str:
         """Process one user message. May involve multiple LLM/tool rounds."""
         self.messages.append({"role": "user", "content": user_input})
         self.context.maybe_compress(self.messages, self.llm)
@@ -139,7 +144,8 @@ class Agent:
         call and becomes the tool result the model sees; None lets it through."""
         if self.hooks is None:
             return None
-        return self.hooks.run_pre(tc.name, tc.arguments)
+        result = self.hooks.run_pre(tc.name, tc.arguments)
+        return t.cast(str | None, result)
 
     def _post_hooks(self, tc: ToolCall, result: str) -> None:
         """PostToolUse hooks observe a finished call; they can never block."""
@@ -163,7 +169,8 @@ class Agent:
             )
         if self.permission is None:
             return None
-        return self.permission.check(tc.name, tc.arguments)
+        result = self.permission.check(tc.name, tc.arguments)
+        return t.cast(str | None, result)
 
     def _exec_tool(self, tc: ToolCall) -> str:
         """Execute a single tool call, returning the result string."""
@@ -181,13 +188,19 @@ class Agent:
             result = tool.execute(**tc.arguments)
             if isinstance(result, ToolResult):
                 self.changed_files.update(result.changed_files)
+                if result.todo_tasks is not None:
+                    self.todo_tasks = result.todo_tasks
                 return result.output
             else:
                 return result
         except Exception as e:  # noqa: BLE001
             return f"Error executing {tc.name}: {e}"
 
-    def _exec_tools_parallel(self, tool_calls, on_tool=None) -> list[str]:
+    def _exec_tools_parallel(
+        self,
+        tool_calls: list[ToolCall],
+        on_tool: t.Callable[[str, dict[str, t.Any]], None] | None = None,
+    ) -> list[str]:
         """Run multiple tool calls concurrently using threads.
 
         This is inspired by Claude Code's StreamingToolExecutor which starts
@@ -200,16 +213,17 @@ class Agent:
 
         # hooks and consent are settled up front on this thread: prompting
         # from pool workers would interleave several prompts on one terminal
-        results = [self._pre_hooks(tc) or self._permit(tc) for tc in tool_calls]
+        results: list[str | None] = [self._pre_hooks(tc) or self._permit(tc) for tc in tool_calls]
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
             futures = {i: pool.submit(self._exec_tool, tc) for i, tc in enumerate(tool_calls) if results[i] is None}
             for i, future in futures.items():
                 results[i] = future.result()
+        final_results = [result if result is not None else "" for result in results]
         for i in futures:
-            self._post_hooks(tool_calls[i], results[i])
-        return results
+            self._post_hooks(tool_calls[i], final_results[i])
+        return final_results
 
-    def _answer_pending_tool_calls(self, tool_calls):
+    def _answer_pending_tool_calls(self, tool_calls: list[ToolCall]) -> None:
         """Backfill a tool reply for every call that didn't get one.
 
         OpenAI-compatible APIs reject a request where an assistant message has
@@ -227,6 +241,6 @@ class Agent:
                     }
                 )
 
-    def reset(self):
+    def reset(self) -> None:
         """Clear conversation history."""
         self.messages.clear()

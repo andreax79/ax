@@ -7,8 +7,13 @@ CoreCoder distills this to: JSON dump of messages + model config.
 import json
 import re
 import time
+import typing as t
 import uuid
 from pathlib import Path
+
+if t.TYPE_CHECKING:
+    from .agent import Agent
+
 
 SESSIONS_DIR = Path.home() / ".corecoder" / "sessions"
 _SAFE_SESSION_RE = re.compile(r"[^A-Za-z0-9._-]+")
@@ -38,39 +43,50 @@ def _session_path(session_id: str) -> Path:
     return path
 
 
-def save_session(messages: list[dict], model: str, session_id: str | None = None) -> str:
+def save_session(agent: "Agent", model: str, session_id: str | None = None) -> str:
     """Save conversation to disk. Returns the session ID."""
     SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
     session_id = _normalize_session_id(session_id)
 
-    data = {
+    data: dict[str, t.Any] = {
         "id": session_id,
         "model": model,
         "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "messages": messages,
+        "messages": agent.messages,
+        "changed_files": list(agent.changed_files),
     }
+    if hasattr(agent.llm, "total_prompt_tokens"):
+        data["total_prompt_tokens"] = agent.llm.total_prompt_tokens  # type: ignore
+    if hasattr(agent.llm, "total_completion_tokens"):
+        data["total_completion_tokens"] = agent.llm.total_completion_tokens  # type: ignore
 
     path = _session_path(session_id)
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     return session_id
 
 
-def load_session(session_id: str) -> tuple[list[dict], str] | None:
+def load_session(agent: "Agent", session_id: str) -> dict[str, t.Any] | None:
     """Load a saved session. Returns (messages, model) or None."""
     path = _session_path(session_id)
     if not path.exists():
         return None
 
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data["messages"], data["model"]
+        data: dict[str, t.Any] = json.loads(path.read_text(encoding="utf-8"))  # type: ignore
+        agent.messages = data.get("messages", [])
+        agent.changed_files = set(data.get("changed_files", []))
+        if data.get("total_prompt_tokens") is not None and hasattr(agent.llm, "total_prompt_tokens"):
+            agent.llm.total_prompt_tokens = data["total_prompt_tokens"]  # type: ignore
+        if data.get("total_completion_tokens") is not None and hasattr(agent.llm, "total_completion_tokens"):
+            agent.llm.total_completion_tokens = data["total_completion_tokens"]  # type: ignore
+        return data
     except (json.JSONDecodeError, KeyError, OSError):
         # a corrupt or truncated session file shouldn't crash resume
         return None
 
 
-def list_sessions() -> list[dict]:
+def list_sessions() -> list[dict["str", t.Any]]:
     """List available sessions, newest first."""
     if not SESSIONS_DIR.exists():
         return []

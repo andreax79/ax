@@ -18,6 +18,7 @@ import os
 import subprocess
 import threading
 import time
+import typing as t
 from pathlib import Path
 
 from . import __version__
@@ -43,7 +44,13 @@ class MCPClient:
     lock keeps two threads' requests from interleaving on stdin.
     """
 
-    def __init__(self, name: str, command: str, args: list = (), env: dict | None = None):
+    def __init__(
+        self,
+        name: str,
+        command: str,
+        args: t.Sequence[str] = (),
+        env: t.Mapping[str, str] | None = None,
+    ) -> None:
         self.name = name
         self.call_timeout = CALL_TIMEOUT
         self._proc = subprocess.Popen(
@@ -55,9 +62,13 @@ class MCPClient:
             errors="replace",
             bufsize=1,  # line buffered: the transport is newline-delimited JSON
         )
+        if self._proc.stdin is None or self._proc.stdout is None:
+            raise MCPError(f"MCP server {self.name!r} did not open stdio pipes")
+        self._stdin = self._proc.stdin
+        self._stdout = self._proc.stdout
         self._next_id = 0
         self._dead: MCPError | None = None
-        self._responses: dict[int, dict] = {}
+        self._responses: dict[int, dict[str, t.Any]] = {}
         self._cond = threading.Condition()
         self._write_lock = threading.Lock()
         threading.Thread(target=self._read_loop, daemon=True).start()
@@ -78,7 +89,7 @@ class MCPClient:
             self.close()  # a half-started server must not leak
             raise
 
-    def call_tool(self, tool_name: str, arguments: dict) -> str:
+    def call_tool(self, tool_name: str, arguments: dict[str, t.Any]) -> str:
         """Run one remote tool and return its text content."""
         result = self._request("tools/call", {"name": tool_name, "arguments": arguments}, self.call_timeout)
         text = "\n".join(part.get("text", "") for part in result.get("content", []) if part.get("type") == "text")
@@ -86,12 +97,12 @@ class MCPClient:
             raise MCPError(text or f"{tool_name} reported an error")
         return text or json.dumps(result)  # non-text content: hand the model the raw result
 
-    def close(self):
+    def close(self) -> None:
         """Shut the server down. Safe to call twice."""
         if self._proc.poll() is not None:
             return
         try:
-            self._proc.stdin.close()
+            self._stdin.close()
         except OSError:
             pass
         self._proc.terminate()
@@ -100,13 +111,13 @@ class MCPClient:
         except subprocess.TimeoutExpired:
             self._proc.kill()
 
-    def _notify(self, method: str):
+    def _notify(self, method: str) -> None:
         try:
             self._write({"jsonrpc": "2.0", "method": method, "params": {}})
         except MCPError:
             pass  # a notification has no reply to lose; the next request meets the dead server
 
-    def _request(self, method: str, params: dict, timeout: float) -> dict:
+    def _request(self, method: str, params: dict[str, t.Any], timeout: float) -> dict[str, t.Any]:
         with self._cond:
             if self._dead is not None:
                 raise self._dead
@@ -127,17 +138,17 @@ class MCPClient:
             raise MCPError(f"MCP server {self.name!r} rejected {method}: {msg['error'].get('message', msg['error'])}")
         return msg.get("result", {})
 
-    def _write(self, msg: dict):
+    def _write(self, msg: dict[str, t.Any]) -> None:
         try:
             with self._write_lock:
-                self._proc.stdin.write(json.dumps(msg) + "\n")
-                self._proc.stdin.flush()
+                self._stdin.write(json.dumps(msg) + "\n")
+                self._stdin.flush()
         except OSError as e:
             raise MCPError(f"MCP server {self.name!r} is not writable: {e}") from e
 
-    def _read_loop(self):
+    def _read_loop(self) -> None:
         try:
-            for line in self._proc.stdout:
+            for line in self._stdout:
                 try:
                     msg = json.loads(line)
                 except json.JSONDecodeError:
@@ -163,14 +174,27 @@ class MCPTool(Tool):
     first, like any mutating tool.
     """
 
-    def __init__(self, client: MCPClient, spec: dict):
-        self._client = client
-        self._remote_name = spec["name"]
-        self.name = f"mcp__{client.name}__{spec['name']}"
-        self.description = spec.get("description") or ""
-        self.parameters = spec.get("inputSchema") or {"type": "object", "properties": {}}
+    parameters: t.ClassVar[dict[str, t.Any]] = {"type": "object", "properties": {}}
 
-    def execute(self, **kwargs) -> str:
+    def __init__(self, client: MCPClient, spec: dict[str, t.Any]) -> None:
+        self._client = client
+        self._remote_name = str(spec["name"])
+        self.name = f"mcp__{client.name}__{self._remote_name}"
+        self.description = str(spec.get("description") or "")
+        self._parameters = t.cast(dict[str, t.Any], spec.get("inputSchema") or {"type": "object", "properties": {}})
+
+    def schema(self) -> dict[str, t.Any]:
+        """OpenAI function-calling schema using the remote tool's JSON schema."""
+        return {
+            "type": "function",
+            "function": {
+                "name": self.name,
+                "description": self.description,
+                "parameters": self._parameters,
+            },
+        }
+
+    def execute(self, **kwargs: dict[str, t.Any]) -> str:
         return self._client.call_tool(self._remote_name, kwargs)
 
 
@@ -201,6 +225,6 @@ def load_mcp_tools(path: Path = CONFIG_FILE) -> list[Tool]:
 
 
 @atexit.register
-def _shutdown():
+def _shutdown() -> None:
     for client in _live_clients:
         client.close()

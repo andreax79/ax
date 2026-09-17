@@ -228,26 +228,30 @@ def test_compress_never_leaves_an_orphan_tool_reply():
 
 def test_session_save_load(tmp_path, monkeypatch):
     monkeypatch.setattr(session_module, "SESSIONS_DIR", tmp_path)
-    msgs = [{"role": "user", "content": "test message"}]
-    save_session(msgs, "test-model", "pytest_test_session")
-    loaded = load_session("pytest_test_session")
-    assert loaded is not None
-    assert loaded[0] == msgs
-    assert loaded[1] == "test-model"
+    messages = [{"role": "user", "content": "test message"}]
+    agent = Agent(llm=LLM.__new__(LLM))
+    agent.messages = messages
+    save_session(agent, "test-model", "pytest_test_session")
+    data = load_session(agent, "pytest_test_session")
+    assert data is not None
+    assert agent.messages == messages
+    assert data["model"] == "test-model"
 
 
 def test_session_name_is_sanitized(tmp_path, monkeypatch):
     monkeypatch.setattr(session_module, "SESSIONS_DIR", tmp_path)
-    msgs = [{"role": "user", "content": "test message"}]
-    sid = save_session(msgs, "test-model", "../Research Notes!")
+    agent = Agent(llm=LLM.__new__(LLM))
+    agent.messages = [{"role": "user", "content": "test message"}]
+    sid = save_session(agent, "test-model", "../Research Notes!")
 
     assert sid == "Research-Notes"
     assert (tmp_path / "Research-Notes.json").exists()
-    assert load_session("../Research Notes!") is not None
+    assert load_session(agent, "../Research Notes!") is not None
 
 
 def test_session_not_found():
-    assert load_session("nonexistent_session_id") is None
+    agent = Agent(llm=LLM.__new__(LLM))
+    assert load_session(agent, "nonexistent_session_id") is None
 
 
 def test_list_sessions():
@@ -339,17 +343,17 @@ def test_interrupt_backfills_missing_tool_replies():
 
 def test_todo_list_is_injected_into_system_context():
     """After a todo_write call, the next request must carry the list in the system message."""
-    from corecoder.tools.todo_write import TodoWriteTool
-
-    todo = TodoWriteTool()
+    todo = get_tool("todo_write")
     agent = Agent(llm=LLM.__new__(LLM), tools=[todo])
 
-    todo.execute(
+    r = todo.execute(
         tasks=[
             {"content": "fix the bug", "status": "in_progress"},
             {"content": "add a test", "status": "pending"},
         ]
     )
+    assert len(r.todo_tasks) == 2
+    agent.todo_tasks = r.todo_tasks
     system = agent._full_messages()[0]["content"]
     assert "# Current task list" in system
     assert "1. [in_progress] fix the bug" in system
@@ -358,18 +362,19 @@ def test_todo_list_is_injected_into_system_context():
 
 def test_todo_injection_tracks_updates():
     """The injection is rebuilt every round: updates show, an empty list injects nothing."""
-    from corecoder.tools.todo_write import TodoWriteTool
-
-    todo = TodoWriteTool()
+    todo = get_tool("todo_write")
     agent = Agent(llm=LLM.__new__(LLM), tools=[todo])
 
-    todo.execute(tasks=[{"content": "only task", "status": "in_progress"}])
-    todo.execute(tasks=[{"content": "only task", "status": "done"}])
+    r = todo.execute(tasks=[{"content": "only task", "status": "in_progress"}])
+    agent.todo_tasks = r.todo_tasks
+    r = todo.execute(tasks=[{"content": "only task", "status": "done"}])
+    agent.todo_tasks = r.todo_tasks
     system = agent._full_messages()[0]["content"]
     assert "[done] only task" in system
     assert "[in_progress] only task" not in system
 
-    todo.execute(tasks=[])
+    r = todo.execute(tasks=[])
+    agent.todo_tasks = r.todo_tasks
     assert "# Current task list" not in agent._full_messages()[0]["content"]
 
 

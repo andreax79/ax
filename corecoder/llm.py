@@ -11,16 +11,21 @@ single unified interface. Set CORECODER_PROVIDER=litellm.
 
 import json
 import time
+import typing as t
 from dataclasses import dataclass, field
 
-from openai import APIConnectionError, APIError, APITimeoutError, BadRequestError, OpenAI, RateLimitError
+from openai import APIConnectionError, APIError, APITimeoutError, BadRequestError, OpenAI, RateLimitError  # type: ignore[import]
+
+Message = dict[str, t.Any]
+Params = dict[str, t.Any]
+Stream = t.Iterable[t.Any]
 
 
 @dataclass
 class ToolCall:
     id: str
     name: str
-    arguments: dict
+    arguments: dict[str, t.Any]
 
 
 @dataclass
@@ -31,9 +36,9 @@ class LLMResponse:
     completion_tokens: int = 0
 
     @property
-    def message(self) -> dict:
+    def message(self) -> Message:
         """Convert to OpenAI message format for appending to history."""
-        msg: dict = {"role": "assistant", "content": self.content or None}
+        msg: Message = {"role": "assistant", "content": self.content or None}
         if self.tool_calls:
             msg["tool_calls"] = [
                 {
@@ -55,8 +60,8 @@ class LLM:
         model: str,
         api_key: str,
         base_url: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: t.Any,
+    ) -> None:
         self.model = model
         self.client = OpenAI(api_key=api_key, base_url=base_url)
         self.extra = kwargs  # temperature, max_tokens, etc.
@@ -65,12 +70,12 @@ class LLM:
 
     def chat(
         self,
-        messages: list[dict],
-        tools: list[dict] | None = None,
-        on_token=None,
+        messages: list[Message],
+        tools: list[Message] | None = None,
+        on_token: t.Callable[[str], None] | None = None,
     ) -> LLMResponse:
         """Send messages, stream back response, handle tool calls."""
-        params: dict = {
+        params: Params = {
             "model": self.model,
             "messages": messages,
             "stream": True,
@@ -92,7 +97,7 @@ class LLM:
             stream = self._call_with_retry(params)
 
         content_parts: list[str] = []
-        tc_map: dict[int, dict] = {}  # index -> {id, name, arguments_str}
+        tc_map: dict[int, dict[str, str]] = {}  # index -> {id, name, arguments_str}
         prompt_tok = 0
         completion_tok = 0
 
@@ -138,7 +143,7 @@ class LLM:
                 args = json.loads(raw["args"])
             except (json.JSONDecodeError, KeyError):
                 args = {}
-            parsed.append(ToolCall(id=raw["id"], name=raw["name"], arguments=args))
+            parsed.append(ToolCall(id=raw["id"], name=raw["name"], arguments=t.cast(dict[str, t.Any], args)))
 
         self.total_prompt_tokens += prompt_tok
         self.total_completion_tokens += completion_tok
@@ -150,11 +155,11 @@ class LLM:
             completion_tokens=completion_tok,
         )
 
-    def _call_with_retry(self, params: dict, max_retries: int = 3):
+    def _call_with_retry(self, params: Params, max_retries: int = 3) -> Stream:
         """Retry on transient errors with exponential backoff."""
         for attempt in range(max_retries):
             try:
-                return self.client.chat.completions.create(**params)
+                return t.cast(Stream, self.client.chat.completions.create(**params))
             except (RateLimitError, APITimeoutError, APIConnectionError):
                 if attempt == max_retries - 1:
                     raise
@@ -167,6 +172,7 @@ class LLM:
                     time.sleep(2**attempt)
                 else:
                     raise
+        raise RuntimeError("unreachable")
 
 
 class LiteLLM(LLM):
@@ -187,8 +193,8 @@ class LiteLLM(LLM):
         model: str,
         api_key: str | None = None,
         base_url: str | None = None,
-        **kwargs,
-    ):
+        **kwargs: t.Any,
+    ) -> None:
         # skip LLM.__init__ which creates an OpenAI client
         self.model = model
         self.api_key = api_key
@@ -197,9 +203,9 @@ class LiteLLM(LLM):
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
 
-    def _call_with_retry(self, params: dict, max_retries: int = 3):
+    def _call_with_retry(self, params: Params, max_retries: int = 3) -> Stream:
         """Retry on transient errors with exponential backoff via litellm."""
-        import litellm
+        import litellm  # type: ignore[import]
 
         params["drop_params"] = True
         if self.api_key:
@@ -209,7 +215,7 @@ class LiteLLM(LLM):
 
         for attempt in range(max_retries):
             try:
-                return litellm.completion(**params)
+                return t.cast(Stream, litellm.completion(**params))
             except Exception as e:
                 err = str(e).lower()
                 is_transient = any(kw in err for kw in ["rate_limit", "timeout", "connection", "502", "503", "529"])
@@ -218,3 +224,4 @@ class LiteLLM(LLM):
                     time.sleep(2**attempt)
                 else:
                     raise
+        raise RuntimeError("unreachable")

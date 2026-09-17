@@ -11,13 +11,7 @@ class ToolResult:
 
     output: str
     changed_files: list[str] = field(default_factory=list)
-
-    @classmethod
-    def to_tool_result(cls, result: t.Union[str, "ToolResult"]) -> "ToolResult":
-        """Convert to ToolResult if not already."""
-        if isinstance(result, ToolResult):
-            return result
-        return ToolResult(output=result)
+    todo_tasks: list[dict[str, t.Any]] | None = None
 
 
 class Tool(ABC):
