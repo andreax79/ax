@@ -4,9 +4,7 @@ from corecoder import Agent
 from corecoder.demo import ScriptedLLM
 from corecoder.llm import LLMResponse, ToolCall
 from corecoder.permissions import Permission
-from corecoder.tools.agent import AgentTool
-from corecoder.tools.write import WriteFileTool
-from tests.conftest import get_tool
+from corecoder.tools import get_tool
 
 
 def _write_call(call_id, path):
@@ -58,7 +56,7 @@ def test_allow_once_asks_again_for_the_next_call(tmp_path):
     asked = []
     agent = Agent(
         llm=ScriptedLLM(_two_writes_then_text(tmp_path)),
-        tools=[WriteFileTool()],
+        tools=[get_tool("write_file")],
         permission=Permission(ask=lambda name, args: asked.append(name) or "once"),
     )
 
@@ -71,7 +69,7 @@ def test_always_allow_is_remembered_for_the_session(tmp_path):
     asked = []
     agent = Agent(
         llm=ScriptedLLM(_two_writes_then_text(tmp_path)),
-        tools=[WriteFileTool()],
+        tools=[get_tool("write_file")],
         permission=Permission(ask=lambda name, args: asked.append(name) or "always"),
     )
 
@@ -86,7 +84,7 @@ def test_deny_skips_execution_and_reports_back(tmp_path):
             LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
             LLMResponse(content="understood"),
         ]),
-        tools=[WriteFileTool()],
+        tools=[get_tool("write_file")],
         permission=Permission(ask=lambda name, args: "deny"),
     )
 
@@ -104,7 +102,7 @@ def test_no_callback_means_auto_deny(tmp_path):
             LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
             LLMResponse(content="ok"),
         ]),
-        tools=[WriteFileTool()],
+        tools=[get_tool("write_file")],
         permission=Permission(),
     )
 
@@ -117,7 +115,7 @@ def test_allow_all_approves_without_any_callback(tmp_path):
     # what --yes wires in
     agent = Agent(
         llm=ScriptedLLM(_two_writes_then_text(tmp_path)),
-        tools=[WriteFileTool()],
+        tools=[get_tool("write_file")],
         permission=Permission(allow_all=True),
     )
 
@@ -133,7 +131,7 @@ def test_parallel_calls_each_get_their_own_decision(tmp_path):
     ]
     agent = Agent(
         llm=ScriptedLLM([LLMResponse(tool_calls=calls), LLMResponse(content="done")]),
-        tools=[get_tool("bash"), WriteFileTool()],
+        tools=[get_tool("bash"), get_tool("write_file")],
         permission=Permission(ask=lambda name, args: "deny" if name == "bash" else "once"),
     )
 
@@ -160,7 +158,7 @@ def test_sub_agent_inherits_the_permission_layer(tmp_path):
             LLMResponse(content="could not write"),               # the sub-agent's reply
             LLMResponse(content="parent done"),
         ]),
-        tools=[AgentTool(), WriteFileTool()],
+        tools=[get_tool("agent"), get_tool("write_file")],
         permission=Permission(ask=ask),
     )
 

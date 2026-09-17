@@ -4,8 +4,7 @@ from corecoder import Agent, Config, cli
 from corecoder.demo import ScriptedLLM
 from corecoder.llm import LLMResponse, ToolCall
 from corecoder.permissions import Permission
-from corecoder.tools.write import WriteFileTool
-from tests.conftest import get_tool
+from corecoder.tools import get_tool
 
 
 def _write_call(call_id, path):
@@ -19,7 +18,7 @@ def _agent(tmp_path, permission):
             LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
             LLMResponse(content="here is the plan"),
         ]),
-        tools=[WriteFileTool()],
+        tools=[get_tool("write_file")],
         permission=permission,
     )
 

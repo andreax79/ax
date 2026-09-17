@@ -24,7 +24,7 @@ from .permissions import Permission
 from .project_guidance import load_project_guidance
 from .prompt import system_prompt
 from .session import list_sessions, load_session, save_session
-from .tools import ALL_TOOLS
+from .tools import get_tools
 from .tools.bash import set_cwd
 from .utils import find_project_root
 
@@ -103,7 +103,7 @@ def main():
         permission = Permission(ask=_ask_permission)
     agent = Agent(
         llm=llm,
-        tools=[*ALL_TOOLS, *load_mcp_tools()],
+        tools=[*get_tools(), *load_mcp_tools()],
         max_context_tokens=config.max_context_tokens,
         permission=permission,
         hooks=load_hooks(),

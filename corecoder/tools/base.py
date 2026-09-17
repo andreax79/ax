@@ -9,7 +9,7 @@ class Tool(ABC):
     name: str
     description: str
     parameters: dict  # JSON Schema for the function args
-    read_only: bool = False
+    read_only: bool = False  # If True, the tool does not modify files
 
     @abstractmethod
     def execute(self, **kwargs) -> str:
@@ -26,3 +26,6 @@ class Tool(ABC):
                 "parameters": self.parameters,
             },
         }
+
+    def __repr__(self) -> str:
+        return f"<Tool {self.name}>"

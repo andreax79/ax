@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from ..checkpoints import record as _record_checkpoint
 from .base import Tool
-from .edit import _changed_files
+from .edit_file import _changed_files
 
 
 class WriteFileTool(Tool):

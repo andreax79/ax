@@ -7,6 +7,7 @@ from typing import ClassVar
 
 from .base import Tool
 
+DEFAULT_MAX_COUNT = 200
 
 class AgTool(Tool):
     name = "ag"
@@ -44,6 +45,7 @@ class AgTool(Tool):
         path: str = ".",
         include: str | None = None,
         literal: bool = False,
+        max_count: int = DEFAULT_MAX_COUNT,
     ) -> str:
         if shutil.which("ag") is None:
             return "Error: ag (The Silver Searcher) is not installed or not on PATH"
@@ -58,7 +60,7 @@ class AgTool(Tool):
             "--nogroup",
             "--numbers",
             "--max-count",
-            "200",
+            str(max_count)
         ]
         if literal:
             cmd.append("--literal")
@@ -85,8 +87,8 @@ class AgTool(Tool):
         err = proc.stderr.strip()
         if proc.returncode == 0:
             lines = out.splitlines()
-            if len(lines) > 200:
-                lines = lines[:200] + ["... (200 match limit reached)"]
+            if len(lines) > max_count:
+                lines = lines[:max_count] + [f"... ({max_count} match limit reached)"]
             return "\n".join(lines)
         if proc.returncode == 1:
             return "No matches found."

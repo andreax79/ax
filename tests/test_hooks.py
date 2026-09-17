@@ -7,8 +7,7 @@ from corecoder.demo import ScriptedLLM
 from corecoder.hooks import Hooks, load_hooks
 from corecoder.llm import LLMResponse, ToolCall
 from corecoder.permissions import Permission
-from corecoder.tools.agent import AgentTool
-from corecoder.tools.write import WriteFileTool
+from corecoder.tools import get_tool
 
 
 def _write_call(call_id, path):
@@ -22,7 +21,7 @@ def _agent(tmp_path, hooks, permission=None):
             LLMResponse(tool_calls=[_write_call("c1", tmp_path / "a.txt")]),
             LLMResponse(content="done"),
         ]),
-        tools=[WriteFileTool()],
+        tools=[get_tool("write_file")],
         permission=permission,
         hooks=hooks,
     )
@@ -115,7 +114,7 @@ def test_hooks_gate_each_call_of_a_parallel_batch(tmp_path):
     post_log = tmp_path / "post.jsonl"
     agent = Agent(
         llm=ScriptedLLM([LLMResponse(tool_calls=calls), LLMResponse(content="done")]),
-        tools=[WriteFileTool()],
+        tools=[get_tool("write_file")],
         hooks=Hooks(
             pre=[{"matcher": "*", "command": f"cat >> {pre_log}"}],
             post=[{"matcher": "*", "command": f"cat >> {post_log}"}],
@@ -137,7 +136,7 @@ def test_sub_agent_inherits_the_hooks(tmp_path):
             LLMResponse(content="could not write"),               # the sub-agent's reply
             LLMResponse(content="parent done"),
         ]),
-        tools=[AgentTool(), WriteFileTool()],
+        tools=[get_tool("agent"), get_tool("write_file")],
         hooks=Hooks(pre=[{"matcher": "write_file", "command": "sh -c 'echo no >&2; exit 2'"}], post=[]),
     )
 

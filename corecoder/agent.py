@@ -17,10 +17,10 @@ from .llm import LLM, ToolCall
 from .permissions import Permission
 from .project_guidance import load_project_guidance
 from .prompt import PLAN_MODE_PROMPT, system_prompt
-from .tools import ALL_TOOLS
+from .tools import get_tools
 from .tools.agent import AgentTool
 from .tools.base import Tool
-from .tools.todo import TodoWriteTool
+from .tools.todo_write import TodoWriteTool
 from .utils import find_project_root
 
 
@@ -36,7 +36,7 @@ class Agent:
     ):
         self.llm = llm
         self.project_root = find_project_root()
-        self.tools = tools if tools is not None else ALL_TOOLS
+        self.tools = tools if tools is not None else get_tools()
         self.permission = permission
         self.hooks = hooks
         self._tool_by_name = {t.name: t for t in self.tools}
