@@ -107,7 +107,7 @@ corecoder/
     └── base.py       tool base class                       27 lines
 ```
 
-Nine tools: `bash`, `read_file`, `write_file`, `edit_file`, `glob`, `grep`, `ag` (fast code search via The Silver Searcher), `todo_write` (a task checklist the agent maintains for itself), and `agent` (which spawns a sub-agent). Everything else is the CLI shell, config, and packaging wrapped around that engine core. If `~/.corecoder/mcp.json` exists, its MCP servers join the nine as extra `mcp__*` tools; the MCP section below covers it.
+Twelve tools: `bash`, `read_file`, `write_file`, `edit_file`, `ls`, `move_file`, `delete_file`, `glob`, `grep`, `ag` (fast code search via The Silver Searcher), `todo_write` (a task checklist the agent maintains for itself), and `agent` (which spawns a sub-agent). Everything else is the CLI shell, config, and packaging wrapped around that engine core. If `~/.corecoder/mcp.json` exists, its MCP servers join the twelve as extra `mcp__*` tools; the MCP section below covers it.
 
 ## A `while` loop is the whole agent
 

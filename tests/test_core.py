@@ -92,6 +92,13 @@ def test_system_prompt_includes_project_root(tmp_path, monkeypatch):
     assert f"- Project root: {project_root}" in prompt
 
 
+def test_system_prompt_prefers_ag_for_code_searches():
+    prompt = system_prompt([], project_root="")
+
+    assert "Prefer ag for code searches" in prompt
+    assert "Use ag before grep" in prompt
+
+
 # --- Project guidance ---
 
 

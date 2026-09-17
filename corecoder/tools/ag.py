@@ -31,6 +31,10 @@ class AgTool(Tool):
                 "type": "string",
                 "description": "Only search files whose path matches this regex (ag -G)",
             },
+            "file_type": {
+                "type": "string",
+                "description": "Restrict search to an ag file type, e.g. 'python' for ag --python. See: ag --list-file-types",
+            },
             "literal": {
                 "type": "boolean",
                 "description": "Treat pattern as a literal string instead of a regex (default false)",
@@ -44,6 +48,7 @@ class AgTool(Tool):
         pattern: str,
         path: str = ".",
         include: str | None = None,
+        file_type: str | None = None,
         literal: bool = False,
         max_count: int = DEFAULT_MAX_COUNT,
     ) -> str:
@@ -64,6 +69,11 @@ class AgTool(Tool):
         ]
         if literal:
             cmd.append("--literal")
+        if file_type:
+            normalized = file_type.strip().lstrip("-")
+            if not normalized.replace("-", "").replace("_", "").isalnum():
+                return "Error: file_type must be an ag file type name like 'python' or 'js'"
+            cmd.append(f"--{normalized}")
         if include:
             cmd.extend(["-G", include])
         cmd.extend([pattern, str(base)])
@@ -94,4 +104,6 @@ class AgTool(Tool):
             return "No matches found."
         if "Bad regex" in err:
             return f"Invalid regex: {err}"
+        if "Unknown file type" in err:
+            return f"Unknown file type: {err}"
         return f"Error running ag: {err or f'exit code {proc.returncode}'}"

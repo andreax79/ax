@@ -317,7 +317,11 @@ def _repl(agent: Agent, config: Config):
             print(tok, end="", flush=True)
 
         def on_tool(name, kwargs):
-            console.print(f"\n[dim]> {name}({_brief(kwargs)})[/dim]")
+            if agent._todo is not None:
+                todo = agent._todo.render()
+            else:
+                todo = ""
+            console.print(f"[dim]{todo}\n> {name}({_brief(kwargs)})[/dim]")
 
         try:
             response = agent.chat(user_input, on_token=on_token, on_tool=on_tool)
@@ -424,5 +428,9 @@ def _brief_format(k: str, v: t.Any) -> str:
         return f"{k}={repr(v)[:40]}"
 
 def _brief(kwargs: dict, maxlen: int = 140) -> str:
-    s = ", ".join(_brief_format(k, v) for k, v in kwargs.items())
+    s = ", ".join(
+        _brief_format(k, v)
+        for k, v in kwargs.items()
+        if k not in ("timeout", "old_string", "new_string")
+    )
     return s[:maxlen] + ("..." if len(s) > maxlen else "")

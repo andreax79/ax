@@ -501,6 +501,21 @@ def test_ag_include_filters_paths(tmp_path):
     assert "a.txt" not in r
 
 
+def test_ag_file_type_filters_paths(tmp_path):
+    (tmp_path / "a.py").write_text("needle\n", encoding="utf-8")
+    (tmp_path / "a.txt").write_text("needle\n", encoding="utf-8")
+    ag = get_tool("ag")
+    r = ag.execute(pattern="needle", path=str(tmp_path), file_type="python")
+    assert "a.py" in r
+    assert "a.txt" not in r
+
+
+def test_ag_rejects_invalid_file_type():
+    ag = get_tool("ag")
+    r = ag.execute(pattern="needle", file_type="python;rm")
+    assert "file_type" in r
+
+
 # --- agent tool ---
 
 def test_agent_tool_schema():
