@@ -161,8 +161,8 @@ class MCPClient:
 
 class MCPTool(Tool):
     """A tool living in an MCP server, registered under a mcp__ name so it can
-    never collide with a built-in. Side effects are unknown, so it stays out of
-    Permission.READ_ONLY and the consent gate asks first, like any mutating tool.
+    never collide with a built-in. Side effects are unknown, so the consent gate asks
+    first, like any mutating tool.
     """
 
     def __init__(self, client: MCPClient, spec: dict):

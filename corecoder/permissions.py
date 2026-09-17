@@ -17,8 +17,6 @@ the loop survives and the model can route around it.
 class Permission:
     """Session-scoped consent state. Pure: no I/O, the CLI hands in `ask`."""
 
-    READ_ONLY = frozenset({"read_file", "glob", "grep", "ag", "todo_write"})
-
     def __init__(self, ask=None, allow_all: bool = False):
         # ask(tool_name, arguments) -> "once" | "always" | "deny"
         self.ask = ask
@@ -28,7 +26,7 @@ class Permission:
     def check(self, tool_name: str, arguments: dict) -> str | None:
         """Decide one call. None lets it through; a string is the refusal
         the model receives as its tool result."""
-        if tool_name in self.READ_ONLY or self.allow_all or tool_name in self._always:
+        if self.allow_all or tool_name in self._always:
             return None
         if self.ask is None:
             return (

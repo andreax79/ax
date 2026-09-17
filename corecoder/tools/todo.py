@@ -21,6 +21,7 @@ _VALID_STATUS = ("pending", "in_progress", "done")
 
 class TodoWriteTool(Tool):
     name = "todo_write"
+    read_only = True
     description = (
         "Manage the session task checklist. Pass the complete list every time; it fully "
         "replaces the old one. Use it to plan multi-step work: write the list up front, "

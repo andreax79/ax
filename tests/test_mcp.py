@@ -182,7 +182,7 @@ def test_an_unstartable_server_is_skipped_with_one_warning(tmp_path, caplog):
 
 
 def test_mcp_tools_sit_behind_the_consent_gate():
-    # not in READ_ONLY, so with nobody to ask the call is refused, never run
+    # with nobody to ask the call is refused, never run
     assert Permission().check("mcp__fake__echo", {}) is not None
 
 

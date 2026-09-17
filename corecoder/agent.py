@@ -13,7 +13,7 @@ import concurrent.futures
 import inspect
 
 from .context import ContextManager
-from .llm import LLM
+from .llm import LLM, ToolCall
 from .permissions import Permission
 from .prompt import PLAN_MODE_PROMPT, system_prompt
 from .tools import ALL_TOOLS
@@ -124,23 +124,27 @@ class Agent:
 
         return "(reached maximum tool-call rounds)"
 
-    def _pre_hooks(self, tc) -> str | None:
+    def _pre_hooks(self, tc: ToolCall) -> str | None:
         """PreToolUse hooks, fired before consent. A string return blocks the
         call and becomes the tool result the model sees; None lets it through."""
         if self.hooks is None:
             return None
         return self.hooks.run_pre(tc.name, tc.arguments)
 
-    def _post_hooks(self, tc, result: str):
+    def _post_hooks(self, tc: ToolCall, result: str) -> None:
         """PostToolUse hooks observe a finished call; they can never block."""
         if self.hooks is not None:
             self.hooks.run_post(tc.name, tc.arguments, result)
 
-    def _permit(self, tc) -> str | None:
+    def _permit(self, tc: ToolCall) -> str | None:
         """Consent check for one call. None means go ahead; a string is the
         refusal, returned as the tool result instead of executing."""
         # plan mode outranks consent, even --yes: while it's on nothing mutates
-        if self.plan_mode and tc.name not in Permission.READ_ONLY:
+        tool = self._tool_by_name.get(tc.name)
+        read_only = tool.read_only if tool is not None else False
+        if read_only:
+            return None
+        if self.plan_mode and tc.name:
             return (
                 "Plan mode is on, so this call was refused: plan mode is "
                 "read-only. Do not retry it. Keep investigating with the "
@@ -151,7 +155,7 @@ class Agent:
             return None
         return self.permission.check(tc.name, tc.arguments)
 
-    def _exec_tool(self, tc) -> str:
+    def _exec_tool(self, tc: ToolCall) -> str:
         """Execute a single tool call, returning the result string."""
         tool = self._tool_by_name.get(tc.name)
         if tool is None:

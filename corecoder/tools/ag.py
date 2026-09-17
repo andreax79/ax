@@ -10,6 +10,7 @@ from .base import Tool
 
 class AgTool(Tool):
     name = "ag"
+    read_only = True
     description = (
         "Search code using The Silver Searcher (ag). "
         "Returns matching lines with file path and line number."
