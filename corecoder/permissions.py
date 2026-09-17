@@ -1,11 +1,11 @@
 """User consent for tool calls, distilled from Claude Code's permissions.
 
-The tools split in two. Read-only ones (read_file, glob, grep, ag, todo_write)
-run the moment the model asks; the mutating ones (edit_file, write_file,
-bash, and spawning a sub-agent) stop for a yes first. "Always allow" is
-remembered per tool for the rest of the session: per tool rather than per
-command, because one approved bash prefix says nothing about the next
-command anyway.
+The tools split in two. Read-only ones (read_file, ls, glob, grep, ag,
+todo_write) run the moment the model asks; the mutating ones (edit_file,
+write_file, move_file, delete_file, bash, and spawning a sub-agent) stop for a
+yes first. "Always allow" is remembered per tool for the rest of the session:
+per tool rather than per command, because one approved bash prefix says nothing
+about the next command anyway.
 
 When there is nobody to ask (one-shot -p mode, or a library embedding with
 no callback), a mutating call is refused instead of blocking on input that

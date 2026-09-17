@@ -280,7 +280,7 @@ def _repl(agent: Agent, config: Config):
             console.print(f"Resume with: corecoder -r {sid}")
             continue
         if user_input == "/diff":
-            from .tools.edit import _changed_files
+            from .tools.edit_file import _changed_files
             if not _changed_files:
                 console.print("[dim]No files modified this session.[/dim]")
             else:

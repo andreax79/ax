@@ -7,7 +7,7 @@ from corecoder.tools import get_tools, get_tool
 
 
 def test_tool_count():
-    assert len(get_tools()) == 9
+    assert len(get_tools()) == 12
 
 
 def test_all_tools_have_valid_schema():
@@ -238,6 +238,128 @@ def test_edit_file_rejects_non_utf8(tmp_path):
     path.write_bytes("café".encode("latin-1"))  # 0xe9 is invalid UTF-8
     r = edit.execute(file_path=str(path), old_string="caf", new_string="x")
     assert "not a UTF-8 text file" in r
+
+
+# --- ls ---
+
+
+def test_ls_lists_direct_children(tmp_path):
+    (tmp_path / "b.txt").write_text("b\n", encoding="utf-8")
+    (tmp_path / "a_dir").mkdir()
+    ls_t = get_tool("ls")
+    r = ls_t.execute(path=str(tmp_path))
+    assert str(tmp_path) in r
+    assert "a_dir/" in r
+    assert "b.txt" in r
+
+
+def test_ls_nonexistent_path():
+    ls_t = get_tool("ls")
+    r = ls_t.execute(path="/nonexistent_dir_abc")
+    assert "not found" in r.lower() or "Error" in r
+
+
+def test_ls_path_is_file(tmp_path):
+    f = tmp_path / "file.txt"
+    f.write_text("x\n", encoding="utf-8")
+    ls_t = get_tool("ls")
+    r = ls_t.execute(path=str(f))
+    assert "not a directory" in r.lower()
+
+
+def test_ls_honors_project_root_gitignore(tmp_path):
+    (tmp_path / ".gitignore").write_text("ignored/\n*.tmp\n", encoding="utf-8")
+    (tmp_path / "ignored").mkdir()
+    (tmp_path / "hidden.tmp").write_text("x\n", encoding="utf-8")
+    (tmp_path / "visible.py").write_text("x\n", encoding="utf-8")
+
+    ls_t = get_tool("ls")
+    r = ls_t.execute(path=str(tmp_path))
+
+    assert "visible.py" in r
+    assert "ignored" not in r
+    assert "hidden.tmp" not in r
+
+
+# --- move_file ---
+
+
+def test_move_file_moves_file_and_creates_dirs(tmp_path):
+    src = tmp_path / "a.txt"
+    dst = tmp_path / "nested" / "b.txt"
+    src.write_text("hello\n", encoding="utf-8")
+
+    move = get_tool("move_file")
+    r = move.execute(source=str(src), destination=str(dst))
+
+    assert "Moved file" in r
+    assert not src.exists()
+    assert dst.read_text(encoding="utf-8") == "hello\n"
+
+
+def test_move_file_refuses_existing_destination_without_overwrite(tmp_path):
+    src = tmp_path / "a.txt"
+    dst = tmp_path / "b.txt"
+    src.write_text("a\n", encoding="utf-8")
+    dst.write_text("b\n", encoding="utf-8")
+
+    move = get_tool("move_file")
+    r = move.execute(source=str(src), destination=str(dst))
+
+    assert "already exists" in r
+    assert src.exists()
+    assert dst.read_text(encoding="utf-8") == "b\n"
+
+
+def test_move_file_can_overwrite_file(tmp_path):
+    src = tmp_path / "a.txt"
+    dst = tmp_path / "b.txt"
+    src.write_text("a\n", encoding="utf-8")
+    dst.write_text("b\n", encoding="utf-8")
+
+    move = get_tool("move_file")
+    r = move.execute(source=str(src), destination=str(dst), overwrite=True)
+
+    assert "Moved file" in r
+    assert not src.exists()
+    assert dst.read_text(encoding="utf-8") == "a\n"
+
+
+# --- delete_file ---
+
+
+def test_delete_file_deletes_file(tmp_path):
+    f = tmp_path / "a.txt"
+    f.write_text("bye\n", encoding="utf-8")
+
+    delete = get_tool("delete_file")
+    r = delete.execute(path=str(f))
+
+    assert "Deleted file" in r
+    assert not f.exists()
+
+
+def test_delete_file_refuses_directory_without_recursive(tmp_path):
+    d = tmp_path / "dir"
+    d.mkdir()
+
+    delete = get_tool("delete_file")
+    r = delete.execute(path=str(d))
+
+    assert "is a directory" in r
+    assert d.exists()
+
+
+def test_delete_file_deletes_directory_recursively(tmp_path):
+    d = tmp_path / "dir"
+    d.mkdir()
+    (d / "a.txt").write_text("x\n", encoding="utf-8")
+
+    delete = get_tool("delete_file")
+    r = delete.execute(path=str(d), recursive=True)
+
+    assert "Deleted directory" in r
+    assert not d.exists()
 
 
 # --- glob ---
