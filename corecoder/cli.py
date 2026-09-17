@@ -20,6 +20,7 @@ from .hooks import load_hooks
 from .llm import LLM, LiteLLM
 from .mcp import load_mcp_tools
 from .permissions import Permission
+from .project_guidance import load_project_guidance
 from .prompt import system_prompt
 from .session import list_sessions, load_session, save_session
 from .tools import ALL_TOOLS
@@ -364,7 +365,13 @@ def _run_shell_input(user_input: str, agent: Agent | None = None):
         set_cwd(cwd)
         if agent is not None:
             agent.project_root = find_project_root()
-            agent._system = system_prompt(agent.tools, project_root=agent.project_root)
+            agent.guidance_path, agent.project_guidance = load_project_guidance(agent.project_root)
+            agent._system = system_prompt(
+                agent.tools,
+                project_root=agent.project_root,
+                project_guidance=agent.project_guidance,
+                guidance_path=str(agent.guidance_path) if agent.guidance_path else None,
+            )
         console.print(f"[dim]cwd: {cwd}[/dim]")
         return
 

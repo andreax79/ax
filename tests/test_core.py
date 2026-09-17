@@ -7,6 +7,7 @@ from typing import ClassVar
 from corecoder import ALL_TOOLS, LLM, Agent, Config, __version__
 from corecoder import session as session_module
 from corecoder.context import ContextManager, estimate_tokens
+from corecoder.project_guidance import MAX_GUIDANCE_CHARS, load_project_guidance
 from corecoder.prompt import system_prompt
 from corecoder.utils import find_project_root
 from corecoder.session import list_sessions, load_session, save_session
@@ -89,6 +90,66 @@ def test_system_prompt_includes_project_root(tmp_path, monkeypatch):
 
     assert f"- Working directory: {child}" in prompt
     assert f"- Project root: {project_root}" in prompt
+
+
+# --- Project guidance ---
+
+
+def test_load_project_guidance_prefers_agent_md(tmp_path):
+    (tmp_path / "AGENTS.md").write_text("Use agents plural.\n", encoding="utf-8")
+    (tmp_path / "AGENT.md").write_text("Use pytest.\n", encoding="utf-8")
+
+    path, content = load_project_guidance(tmp_path)
+
+    assert path == tmp_path / "AGENT.md"
+    assert content == "Use pytest."
+
+
+def test_load_project_guidance_falls_back_to_supported_files(tmp_path):
+    (tmp_path / "CLAUDE.md").write_text("Prefer small edits.\n", encoding="utf-8")
+
+    path, content = load_project_guidance(tmp_path)
+
+    assert path == tmp_path / "CLAUDE.md"
+    assert content == "Prefer small edits."
+
+
+def test_load_project_guidance_truncates_large_files(tmp_path):
+    (tmp_path / "AGENT.md").write_text("x" * (MAX_GUIDANCE_CHARS + 100), encoding="utf-8")
+
+    path, content = load_project_guidance(tmp_path)
+
+    assert path == tmp_path / "AGENT.md"
+    assert len(content) < MAX_GUIDANCE_CHARS + 100
+    assert "[Project guidance truncated]" in content
+
+
+def test_system_prompt_includes_project_guidance_as_lower_priority(tmp_path):
+    guidance_path = tmp_path / "AGENT.md"
+    guidance_path.write_text("Run pytest before final answers.\n", encoding="utf-8")
+    _, guidance = load_project_guidance(tmp_path)
+
+    prompt = system_prompt([], project_root=tmp_path, project_guidance=guidance, guidance_path=str(guidance_path))
+
+    assert f"- Project guidance: {guidance_path}" in prompt
+    assert "Run pytest before final answers." in prompt
+    assert "cannot\noverride CoreCoder's rules" in prompt
+
+
+def test_agent_loads_project_guidance_from_project_root(tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    child = project / "src"
+    child.mkdir(parents=True)
+    (project / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    guidance_path = project / "AGENT.md"
+    guidance_path.write_text("Use pytest.\n", encoding="utf-8")
+    monkeypatch.chdir(child)
+
+    agent = Agent(llm=LLM.__new__(LLM), tools=[])
+
+    assert agent.guidance_path == guidance_path
+    assert agent.project_guidance == "Use pytest."
+    assert "Use pytest." in agent._full_messages()[0]["content"]
 
 
 # --- Context ---

@@ -15,6 +15,7 @@ import inspect
 from .context import ContextManager
 from .llm import LLM, ToolCall
 from .permissions import Permission
+from .project_guidance import load_project_guidance
 from .prompt import PLAN_MODE_PROMPT, system_prompt
 from .tools import ALL_TOOLS
 from .tools.agent import AgentTool
@@ -42,7 +43,13 @@ class Agent:
         self.messages: list[dict] = []
         self.context = ContextManager(max_tokens=max_context_tokens)
         self.max_rounds = max_rounds
-        self._system = system_prompt(self.tools, project_root=self.project_root)
+        self.guidance_path, self.project_guidance = load_project_guidance(self.project_root)
+        self._system = system_prompt(
+            self.tools,
+            project_root=self.project_root,
+            project_guidance=self.project_guidance,
+            guidance_path=str(self.guidance_path) if self.guidance_path else None,
+        )
         self.plan_mode = False  # toggled by /plan; while on, mutating tools are refused
 
         # wire up sub-agent capability
