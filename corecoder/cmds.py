@@ -3,18 +3,15 @@
 import os
 import shlex
 import subprocess
-import typing as t
 
 from rich.console import Console  # type: ignore[import]
-from rich.markdown import Markdown  # type: ignore[import]
 from rich.panel import Panel  # type: ignore[import]
 
-from . import __version__
 from .agent import Agent
 from .config import Config
 from .project_guidance import load_project_guidance
 from .prompt import system_prompt
-from .session import list_sessions, load_session, save_session
+from .session import list_sessions, save_session
 from .tools.bash import set_cwd
 from .utils import find_project_root
 

@@ -3,17 +3,15 @@
 import argparse
 import getpass
 import os
-import shlex
 import socket
-import subprocess
 import sys
-from datetime import datetime
 import typing as t
+from datetime import datetime
 
 from prompt_toolkit import prompt as pt_prompt  # type: ignore[import]
+from prompt_toolkit.formatted_text import ANSI  # type: ignore[import]
 from prompt_toolkit.history import FileHistory  # type: ignore[import]
 from prompt_toolkit.key_binding import KeyBindings  # type: ignore[import]
-from prompt_toolkit.formatted_text import ANSI  # type: ignore[import]
 from rich.console import Console  # type: ignore[import]
 from rich.markdown import Markdown  # type: ignore[import]
 from rich.panel import Panel  # type: ignore[import]
@@ -21,7 +19,20 @@ from rich.text import Text  # type: ignore[import]
 
 from . import __version__
 from .agent import Agent
-from .config import Config, DEFAULT_MODEL
+from .cmds import (
+    cmd_approve,
+    cmd_compact,
+    cmd_diff,
+    cmd_help,
+    cmd_model,
+    cmd_plan,
+    cmd_reset,
+    cmd_save,
+    cmd_sessions,
+    cmd_shell,
+    cmd_tokens,
+)
+from .config import DEFAULT_MODEL, Config
 from .hooks import load_hooks
 from .llm import LLM, LiteLLM
 from .mcp import load_mcp_tools
@@ -29,20 +40,6 @@ from .permissions import Permission
 from .session import load_session
 from .tools import get_tools
 from .utils import render_tasks
-from .cmds import (
-    cmd_reset,
-    cmd_plan,
-    cmd_approve,
-    cmd_model,
-    cmd_tokens,
-    cmd_compact,
-    cmd_save,
-    cmd_diff,
-    cmd_sessions,
-    cmd_shell,
-    cmd_set,
-    cmd_help,
-)
 
 console = Console()
 
