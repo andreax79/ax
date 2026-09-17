@@ -10,7 +10,6 @@ import difflib
 import typing as t
 from pathlib import Path
 
-from ..checkpoints import record as _record_checkpoint
 from .base import Tool, ToolResult
 
 
@@ -62,7 +61,6 @@ class EditFileTool(Tool):
                 )
 
             new_content = content.replace(old_string, new_string, 1)
-            _record_checkpoint(p)
             p.write_text(new_content, encoding="utf-8")
 
             # generate a unified diff so the user/LLM can see exactly what changed

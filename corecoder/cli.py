@@ -287,14 +287,6 @@ def _repl(agent: Agent, config: Config):
                 for f in sorted(agent.changed_files):
                     console.print(f"  [cyan]{f}[/cyan]")
             continue
-        if user_input == "/undo":
-            from .checkpoints import pending, undo
-
-            console.print(undo())
-            left = pending()
-            if left:
-                console.print(f"[dim]{left} more checkpoint(s) on the stack.[/dim]")
-            continue
         if user_input == "/sessions":
             sessions = list_sessions()
             if not sessions:

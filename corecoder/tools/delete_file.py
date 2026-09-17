@@ -4,7 +4,6 @@ import typing as t
 from pathlib import Path
 from shutil import rmtree
 
-from ..checkpoints import record as _record_checkpoint
 from .base import Tool, ToolResult
 
 
@@ -34,7 +33,6 @@ class DeleteFileTool(Tool):
             if target.is_dir() and not recursive:
                 return f"Error: {path} is a directory (set recursive=true to delete it)"
 
-            _record_checkpoint(target)
             if target.is_dir():
                 rmtree(target)
                 kind = "directory"

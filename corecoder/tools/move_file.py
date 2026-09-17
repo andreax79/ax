@@ -4,7 +4,6 @@ import typing as t
 from pathlib import Path
 from shutil import move
 
-from ..checkpoints import record_many as _record_checkpoint
 from .base import Tool, ToolResult
 
 
@@ -47,7 +46,6 @@ class MoveFileTool(Tool):
                 return "Error: cannot overwrite an existing path with a directory"
 
             dst.parent.mkdir(parents=True, exist_ok=True)
-            _record_checkpoint([src, dst])
             if dst.exists():
                 dst.unlink()
             move(str(src), str(dst))

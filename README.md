@@ -187,7 +187,6 @@ Inside the REPL, `/help` lists everything; these are the ones you'll reach for:
 /compact         compact the context by hand
 /tokens          token usage and cost estimate
 /diff            files changed this session
-/undo            revert the most recent file change
 /plan            toggle plan mode (read-only, then a plan to approve)
 /save  /sessions save / list sessions
 quit / exit      exit (Ctrl+C cancels the current round)
