@@ -11,11 +11,13 @@ import typing as t
 import uuid
 from pathlib import Path
 
+from .utils import CONFIG_DIR
+
 if t.TYPE_CHECKING:
     from .agent import Agent
 
 
-SESSIONS_DIR = Path.home() / ".corecoder" / "sessions"
+SESSIONS_DIR = CONFIG_DIR / "sessions"
 _SAFE_SESSION_RE = re.compile(r"[^A-Za-z0-9._-]+")
 _MAX_SESSION_ID_LEN = 100  # keep filenames comfortably under the OS limit
 

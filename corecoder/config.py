@@ -39,13 +39,13 @@ class Config:
         # load .env if present (won't override existing env vars)
         _load_dotenv()
         # pick up common env vars automatically
-        api_key = os.getenv("CORECODER_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or ""
+        api_key = os.getenv("AX_API_KEY") or os.getenv("OPENAI_API_KEY") or os.getenv("DEEPSEEK_API_KEY") or ""
         return cls(
-            model=os.getenv("CORECODER_MODEL", DEFAULT_MODEL),
+            model=os.getenv("AX_MODEL", DEFAULT_MODEL),
             api_key=api_key,
-            base_url=os.getenv("OPENAI_BASE_URL") or os.getenv("CORECODER_BASE_URL"),
-            max_tokens=int(os.getenv("CORECODER_MAX_TOKENS", "4096")),
-            temperature=float(os.getenv("CORECODER_TEMPERATURE", "0")),
-            max_context_tokens=int(os.getenv("CORECODER_MAX_CONTEXT", "128000")),
-            provider=os.getenv("CORECODER_PROVIDER", "openai"),
+            base_url=os.getenv("OPENAI_BASE_URL") or os.getenv("AX_BASE_URL"),
+            max_tokens=int(os.getenv("AX_MAX_TOKENS", "4096")),
+            temperature=float(os.getenv("AX_TEMPERATURE", "0")),
+            max_context_tokens=int(os.getenv("AX_MAX_CONTEXT", "128000")),
+            provider=os.getenv("AX_PROVIDER", "openai"),
         )

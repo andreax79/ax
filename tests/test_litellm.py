@@ -206,7 +206,7 @@ class TestConfigProvider:
         assert config.provider == "openai"
 
     def test_provider_from_env(self):
-        with mock.patch.dict("os.environ", {"CORECODER_PROVIDER": "litellm"}, clear=False):
+        with mock.patch.dict("os.environ", {"AX_PROVIDER": "litellm"}, clear=False):
             config = Config.from_env()
             assert config.provider == "litellm"
 

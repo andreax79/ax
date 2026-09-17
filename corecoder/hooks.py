@@ -1,6 +1,6 @@
 """User shell hooks around tool calls, distilled from Claude Code's hooks.
 
-Definitions live in ~/.corecoder/hooks.json:
+Definitions live in hooks.json in the config directory
 
     {"PreToolUse":  [{"matcher": "bash", "command": "..."}],
      "PostToolUse": [{"matcher": "*",    "command": "..."}]}
@@ -17,9 +17,11 @@ import subprocess
 from pathlib import Path
 from typing import Any, cast
 
+from .utils import CONFIG_DIR
+
 log = logging.getLogger(__name__)
 
-HOOKS_FILE = Path.home() / ".corecoder" / "hooks.json"
+HOOKS_CONFIG_FILE = CONFIG_DIR / "hooks.json"
 TIMEOUT = 10  # seconds; a hung hook must not hang the agent
 
 Hook = dict[str, Any]
@@ -54,7 +56,7 @@ class Hooks:
             _fire(hook, payload)
 
 
-def load_hooks(path: Path = HOOKS_FILE) -> Hooks:
+def load_hooks(path: Path = HOOKS_CONFIG_FILE) -> Hooks:
     """Read hooks.json. A missing file means no hooks; a broken one gets one
     clear warning and is otherwise ignored."""
     try:

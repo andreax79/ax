@@ -1,6 +1,6 @@
 """MCP stdio client, distilled to the slice of the protocol an agent uses.
 
-Servers are configured in ~/.corecoder/mcp.json:
+Servers are configured in mcp.json in the config directory, e.g.
 
     {"mcpServers": {"fs": {"command": "npx", "args": ["-y", "some-fs-server", "/tmp"]}}}
 
@@ -23,10 +23,11 @@ from pathlib import Path
 
 from . import __version__
 from .tools.base import Tool
+from .utils import CONFIG_DIR
 
 log = logging.getLogger(__name__)
 
-CONFIG_FILE = Path.home() / ".corecoder" / "mcp.json"
+MCP_CONFIG_FILE = CONFIG_DIR / "mcp.json"
 PROTOCOL_VERSION = "2025-06-18"
 INIT_TIMEOUT = 15  # seconds for initialize + tools/list at startup
 CALL_TIMEOUT = 60  # seconds for one tools/call
@@ -201,7 +202,7 @@ class MCPTool(Tool):
 _live_clients: list[MCPClient] = []
 
 
-def load_mcp_tools(path: Path = CONFIG_FILE) -> list[Tool]:
+def load_mcp_tools(path: Path = MCP_CONFIG_FILE) -> list[Tool]:
     """Start the configured servers and return their tools. A missing file
     means no MCP; a broken file or a server that won't start gets one clear
     warning and the agent carries on with whatever loaded."""

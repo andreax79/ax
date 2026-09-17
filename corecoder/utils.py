@@ -5,6 +5,10 @@ import shutil
 import typing as t
 from pathlib import Path
 
+import platformdirs
+
+CONFIG_DIR = Path(platformdirs.user_config_dir(appname="ax"))
+
 _PROJECT_ROOT_MARKERS = (".git", ".gitignore", "pyproject.toml")
 
 __all__ = [

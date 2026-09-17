@@ -31,15 +31,15 @@ def test_public_api_exports():
 
 
 def test_config_from_env(monkeypatch):
-    monkeypatch.setenv("CORECODER_MODEL", "test-model")
+    monkeypatch.setenv("AX_MODEL", "test-model")
     c = Config.from_env()
     assert c.model == "test-model"
 
 
 def test_config_defaults(monkeypatch):
     # clear relevant env vars without leaking the change into other tests
-    monkeypatch.delenv("CORECODER_MODEL", raising=False)
-    monkeypatch.delenv("CORECODER_MAX_TOKENS", raising=False)
+    monkeypatch.delenv("AX_MODEL", raising=False)
+    monkeypatch.delenv("AX_MAX_TOKENS", raising=False)
 
     c = Config.from_env()
     assert c.max_tokens == 4096

@@ -68,28 +68,28 @@ def test_bang_cd_refreshes_agent_project_guidance(tmp_path, monkeypatch):
 
 
 def test_bang_set_displays_environment_variables(monkeypatch, capsys):
-    monkeypatch.setenv("CORECODER_TEST_ALPHA", "one")
-    monkeypatch.setenv("CORECODER_TEST_BETA", "two")
+    monkeypatch.setenv("AX_TEST_ALPHA", "one")
+    monkeypatch.setenv("AX_TEST_BETA", "two")
 
     cmds.cmd_set("set", None, None)
 
     out = capsys.readouterr().out
-    assert "CORECODER_TEST_ALPHA=one" in out
-    assert "CORECODER_TEST_BETA=two" in out
+    assert "AX_TEST_ALPHA=one" in out
+    assert "AX_TEST_BETA=two" in out
 
 
 def test_bang_set_assigns_environment_variables(monkeypatch, capsys):
-    monkeypatch.delenv("CORECODER_TEST_SET", raising=False)
+    monkeypatch.delenv("AX_TEST_SET", raising=False)
 
-    cmds.cmd_set("set CORECODER_TEST_SET=works", None, None)
+    cmds.cmd_set("set AX_TEST_SET=works", None, None)
 
-    assert os.environ["CORECODER_TEST_SET"] == "works"
-    assert "CORECODER_TEST_SET set" in capsys.readouterr().out
+    assert os.environ["AX_TEST_SET"] == "works"
+    assert "AX_TEST_SET set" in capsys.readouterr().out
 
 
 def test_bang_set_displays_single_environment_variable(monkeypatch, capsys):
-    monkeypatch.setenv("CORECODER_TEST_SINGLE", "value")
+    monkeypatch.setenv("AX_TEST_SINGLE", "value")
 
-    cmds.cmd_set("set CORECODER_TEST_SINGLE", None, None)
+    cmds.cmd_set("set AX_TEST_SINGLE", None, None)
 
-    assert "CORECODER_TEST_SINGLE=value" in capsys.readouterr().out
+    assert "AX_TEST_SINGLE=value" in capsys.readouterr().out

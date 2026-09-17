@@ -33,13 +33,13 @@ from .cmds import (
     cmd_tokens,
 )
 from .config import DEFAULT_MODEL, Config
-from .hooks import load_hooks
+from .hooks import HOOKS_CONFIG_FILE, load_hooks
 from .llm import LLM, LiteLLM
-from .mcp import load_mcp_tools
+from .mcp import MCP_CONFIG_FILE, load_mcp_tools
 from .permissions import Permission
 from .session import load_session
 from .tools import get_tools
-from .utils import is_unix_command, render_tasks
+from .utils import CONFIG_DIR, is_unix_command, render_tasks
 
 console = Console()
 
@@ -60,13 +60,13 @@ DEFAULT_PROMPT = (
 
 def _parse_args() -> Args:
     p = argparse.ArgumentParser(
-        prog="corecoder",
+        prog="ax",
         description="Minimal AI coding agent. Works with any OpenAI-compatible LLM.",
     )
     p.add_argument(
         "-m",
         "--model",
-        help=f"Model name (default: $CORECODER_MODEL or {DEFAULT_MODEL})",
+        help=f"Model name (default: $AX_MODEL or {DEFAULT_MODEL})",
     )
     p.add_argument("--base-url", help="API base URL (default: $OPENAI_BASE_URL)")
     p.add_argument("--api-key", help="API key (default: $OPENAI_API_KEY)")
@@ -98,7 +98,7 @@ def main() -> None:
     if not config.api_key:
         console.print("[red bold]No API key found.[/]")
         console.print(
-            "Set one of: OPENAI_API_KEY, DEEPSEEK_API_KEY, or CORECODER_API_KEY\n"
+            "Set one of: OPENAI_API_KEY, DEEPSEEK_API_KEY, or AX_API_KEY\n"
             "\nExamples:\n"
             "  # OpenAI\n"
             "  export OPENAI_API_KEY=sk-...\n"
@@ -107,7 +107,7 @@ def main() -> None:
             "  export OPENAI_API_KEY=sk-... OPENAI_BASE_URL=https://api.deepseek.com\n"
             "\n"
             "  # Ollama (local)\n"
-            "  export OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1 CORECODER_MODEL=qwen2.5-coder\n"
+            "  export OPENAI_API_KEY=ollama OPENAI_BASE_URL=http://localhost:11434/v1 AX_MODEL=qwen2.5-coder\n"
         )
         sys.exit(1)
 
@@ -225,18 +225,18 @@ def _repl(agent: Agent, config: Config) -> None:
     )
     console.print(
         Panel(
-            f"[bold]CoreCoder[/bold] v{__version__}\n"
+            f"[bold]ax[/bold] v{__version__}\n"
             f"Model: [cyan]{config.model}[/cyan]"
             + (f"  Base: [dim]{config.base_url}[/dim]" if config.base_url else "")
             + f"\nPermissions: [cyan]{mode}[/cyan]"
             + project_root_line
             + (
-                f"\nHooks: [cyan]{len(agent.hooks.pre)} pre, {len(agent.hooks.post)} post[/cyan] from ~/.corecoder/hooks.json"
+                f"\nHooks: [cyan]{len(agent.hooks.pre)} pre, {len(agent.hooks.post)} post[/cyan] from {HOOKS_CONFIG_FILE}"
                 if agent.hooks
                 else ""
             )
             + (
-                f"\nMCP: [cyan]{mcp_count} tools[/cyan] from ~/.corecoder/mcp.json"
+                f"\nMCP: [cyan]{mcp_count} tools[/cyan] from {MCP_CONFIG_FILE}"
                 if mcp_count
                 else ""
             )
@@ -245,8 +245,8 @@ def _repl(agent: Agent, config: Config) -> None:
         )
     )
 
-    hist_path = os.path.expanduser("~/.corecoder_history")
-    history = FileHistory(hist_path)
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    history = FileHistory(CONFIG_DIR / "history")
 
     # Enter submits, Escape+Enter inserts a newline (for pasting code blocks etc.)
     kb = KeyBindings()
@@ -259,8 +259,8 @@ def _repl(agent: Agent, config: Config) -> None:
     def _newline(event: t.Any) -> None:
         event.current_buffer.insert_text("\n")
 
-    if not "CPROMPT" in os.environ:
-        os.environ["CPROMPT"] = DEFAULT_PROMPT
+    if not "AX_PROMPT" in os.environ:
+        os.environ["AX_PROMPT"] = DEFAULT_PROMPT
 
     while True:
         try:
@@ -396,7 +396,7 @@ def render_prompt(agent: Agent, config: Config, prompt: str | None = None) -> AN
 
         [bold cyan]\\u[/]@[green]\\h[/]:[yellow]\\W[/] [bold]❯[/]
     """
-    cprompt: str = prompt or os.environ.get("CPROMPT", DEFAULT_PROMPT)  # type: ignore[assignment]
+    cprompt: str = prompt or os.environ.get("AX_PROMPT", DEFAULT_PROMPT)  # type: ignore[assignment]
 
     replacements = {
         "u": getpass.getuser(),  # username
