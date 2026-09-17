@@ -39,7 +39,7 @@ from .mcp import load_mcp_tools
 from .permissions import Permission
 from .session import load_session
 from .tools import get_tools
-from .utils import render_tasks
+from .utils import is_unix_command, render_tasks
 
 console = Console()
 
@@ -317,6 +317,10 @@ def _repl(agent: Agent, config: Config) -> None:
             continue
         if user_input == "/sessions":
             cmd_sessions(user_input, agent, config)
+            continue
+
+        if is_unix_command(user_input, default=False):
+            cmd_shell(user_input, agent, config)
             continue
 
         # an unknown /command shouldn't be sent to the model as a prompt

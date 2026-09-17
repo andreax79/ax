@@ -115,8 +115,9 @@ def cmd_sessions(user_input: str, agent: Agent, config: Config) -> None:
 
 
 def cmd_shell(user_input: str, agent: Agent, config: Config) -> None:
-    """Handle REPL lines prefixed with ! as direct shell commands."""
-    command = user_input[1:].strip()
+    """Handle direct shell commands."""
+    user_input = user_input.removeprefix("!")
+    command = user_input.strip()
     if not command:
         shell = os.environ.get("SHELL") or ("cmd" if os.name == "nt" else "/bin/sh")
         try:
