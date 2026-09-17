@@ -8,7 +8,7 @@ from tests.conftest import get_tool
 
 
 def test_tool_count():
-    assert len(ALL_TOOLS) == 8
+    assert len(ALL_TOOLS) == 9
 
 
 def test_all_tools_have_valid_schema():
@@ -318,6 +318,36 @@ def test_grep_skips_junk_dirs_inside_root(tmp_path):
     r = grep.execute(pattern="needle", path=str(tmp_path))
     assert "real.py" in r
     assert "node_modules" not in r
+
+
+# --- ag ---
+
+
+def test_ag_finds_pattern():
+    ag = get_tool("ag")
+    r = ag.execute(pattern="def test_ag", path=__file__)
+    assert "test_ag" in r
+
+
+def test_ag_invalid_regex():
+    ag = get_tool("ag")
+    r = ag.execute(pattern="[invalid")
+    assert "Invalid regex" in r
+
+
+def test_ag_nonexistent_path():
+    ag = get_tool("ag")
+    r = ag.execute(pattern="test", path="/nonexistent_dir_abc")
+    assert "not found" in r.lower() or "Error" in r
+
+
+def test_ag_include_filters_paths(tmp_path):
+    (tmp_path / "a.py").write_text("needle\n", encoding="utf-8")
+    (tmp_path / "a.txt").write_text("needle\n", encoding="utf-8")
+    ag = get_tool("ag")
+    r = ag.execute(pattern="needle", path=str(tmp_path), include=r"\.py$")
+    assert "a.py" in r
+    assert "a.txt" not in r
 
 
 # --- agent tool ---

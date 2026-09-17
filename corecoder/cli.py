@@ -78,9 +78,15 @@ def main():
         model=config.model,
         api_key=config.api_key,
         base_url=config.base_url,
-        temperature=config.temperature,
-        max_tokens=config.max_tokens,
+        max_completion_tokens=config.max_tokens,
     )
+    # llm = llm_cls(
+    #     model=config.model,
+    #     api_key=config.api_key,
+    #     base_url=config.base_url,
+    #     temperature=config.temperature,
+    #     max_tokens=config.max_tokens,
+    # )
     # consent layer: ask in the REPL, refuse in one-shot mode, --yes skips it
     if args.yes:
         permission = Permission(allow_all=True)
@@ -163,11 +169,13 @@ def _repl(agent: Agent, config: Config):
     perm = agent.permission
     mode = "auto-approve every tool call (--yes)" if (perm and perm.allow_all) else "ask before mutating tools"
     mcp_count = sum(1 for t in agent.tools if t.name.startswith("mcp__"))
+    project_root_line = f"\nProject root: [dim]{agent.project_root}[/dim]" if agent.project_root else ""
     console.print(Panel(
         f"[bold]CoreCoder[/bold] v{__version__}\n"
         f"Model: [cyan]{config.model}[/cyan]"
         + (f"  Base: [dim]{config.base_url}[/dim]" if config.base_url else "")
         + f"\nPermissions: [cyan]{mode}[/cyan]"
+        + project_root_line
         + (f"\nHooks: [cyan]{len(agent.hooks.pre)} pre, {len(agent.hooks.post)} post[/cyan]"
            " from ~/.corecoder/hooks.json" if agent.hooks else "")
         + (f"\nMCP: [cyan]{mcp_count} tools[/cyan] from ~/.corecoder/mcp.json" if mcp_count else "")

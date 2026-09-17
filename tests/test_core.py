@@ -7,6 +7,7 @@ from typing import ClassVar
 from corecoder import ALL_TOOLS, LLM, Agent, Config, __version__
 from corecoder import session as session_module
 from corecoder.context import ContextManager, estimate_tokens
+from corecoder.prompt import find_project_root, system_prompt
 from corecoder.session import list_sessions, load_session, save_session
 from tests.conftest import get_tool
 
@@ -55,7 +56,7 @@ def test_public_api_exports():
     assert Agent is not None
     assert LLM is not None
     assert Config is not None
-    assert len(ALL_TOOLS) == 8
+    assert len(ALL_TOOLS) == 9
 
 
 def test_config_from_env(monkeypatch):
@@ -73,6 +74,52 @@ def test_config_defaults(monkeypatch):
     assert c.model == "gpt-5.5"
     assert c.max_tokens == 4096
     assert c.temperature == 0.0
+
+
+# --- Project root detection ---
+
+
+def test_find_project_root_uses_nearest_marker(tmp_path):
+    outer = tmp_path / "outer"
+    inner = outer / "inner"
+    leaf = inner / "pkg"
+    leaf.mkdir(parents=True)
+    (outer / ".gitignore").write_text("*.pyc\n", encoding="utf-8")
+    (inner / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+
+    assert find_project_root(leaf) == inner
+
+
+def test_find_project_root_accepts_file_start(tmp_path):
+    project = tmp_path / "project"
+    src = project / "src"
+    src.mkdir(parents=True)
+    (project / ".git").mkdir()
+    file_path = src / "main.py"
+    file_path.write_text("print('hi')\n", encoding="utf-8")
+
+    assert find_project_root(file_path) == project
+
+
+def test_find_project_root_returns_none_without_marker(tmp_path):
+    leaf = tmp_path / "plain" / "src"
+    leaf.mkdir(parents=True)
+
+    assert find_project_root(leaf) is None
+
+
+def test_system_prompt_includes_project_root(tmp_path, monkeypatch):
+    project = tmp_path / "project"
+    child = project / "src"
+    child.mkdir(parents=True)
+    (project / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
+    monkeypatch.chdir(child)
+
+    project_root = find_project_root(child)
+    prompt = system_prompt([], project_root=project_root)
+
+    assert f"- Working directory: {child}" in prompt
+    assert f"- Project root: {project_root}" in prompt
 
 
 # --- Context ---

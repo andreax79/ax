@@ -20,6 +20,7 @@ from .tools import ALL_TOOLS
 from .tools.agent import AgentTool
 from .tools.base import Tool
 from .tools.todo import TodoWriteTool
+from .utils import find_project_root
 
 
 class Agent:
@@ -33,6 +34,7 @@ class Agent:
         hooks=None,
     ):
         self.llm = llm
+        self.project_root = find_project_root()
         self.tools = tools if tools is not None else ALL_TOOLS
         self.permission = permission
         self.hooks = hooks
@@ -40,7 +42,7 @@ class Agent:
         self.messages: list[dict] = []
         self.context = ContextManager(max_tokens=max_context_tokens)
         self.max_rounds = max_rounds
-        self._system = system_prompt(self.tools)
+        self._system = system_prompt(self.tools, project_root=self.project_root)
         self.plan_mode = False  # toggled by /plan; while on, mutating tools are refused
 
         # wire up sub-agent capability

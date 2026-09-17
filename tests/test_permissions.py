@@ -38,6 +38,22 @@ def test_read_only_tools_run_without_consent(tmp_path):
     assert "hello" in agent.messages[2]["content"]
 
 
+def test_ag_runs_without_consent(tmp_path):
+    f = tmp_path / "note.txt"
+    f.write_text("needle\n", encoding="utf-8")
+    agent = Agent(
+        llm=ScriptedLLM([
+            LLMResponse(tool_calls=[ToolCall(id="c1", name="ag", arguments={"pattern": "needle", "path": str(tmp_path)})]),
+            LLMResponse(content="searched"),
+        ]),
+        tools=[get_tool("ag")],
+        permission=Permission(),
+    )
+
+    assert agent.chat("go") == "searched"
+    assert "needle" in agent.messages[2]["content"]
+
+
 def test_allow_once_asks_again_for_the_next_call(tmp_path):
     asked = []
     agent = Agent(
