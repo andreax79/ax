@@ -2,9 +2,14 @@
 
 from corecoder import Agent
 from corecoder.llm import LLMResponse, ToolCall
-from tests.demo import ScriptedLLM
 from corecoder.permissions import Permission
 from corecoder.tools import get_tool
+from corecoder.tools.base import ToolResult
+from tests.demo import ScriptedLLM
+
+
+def output(result):
+    return result.output if isinstance(result, ToolResult) else result
 
 
 def _write_call(call_id, path):
@@ -131,23 +136,26 @@ def test_allow_all_approves_without_any_callback(tmp_path):
 
 
 def test_parallel_calls_each_get_their_own_decision(tmp_path):
-    marker = tmp_path / "touched"
+    denied_marker = tmp_path / "denied"
+    allowed_marker = tmp_path / "allowed"
     calls = [
-        ToolCall(id="c1", name="bash", arguments={"command": f"touch {marker}"}),
-        _write_call("c2", tmp_path / "ok.txt"),
+        ToolCall(id="c1", name="bash", arguments={"command": f"touch {denied_marker}"}),
+        ToolCall(id="c2", name="bash", arguments={"command": f"touch {allowed_marker}"}),
     ]
     agent = Agent(
         llm=ScriptedLLM([LLMResponse(tool_calls=calls), LLMResponse(content="done")]),
-        tools=[get_tool("bash"), get_tool("write_file")],
-        permission=Permission(ask=lambda name, args: "deny" if name == "bash" else "once"),
+        tools=[get_tool("bash")],
+        permission=Permission(
+            ask=lambda name, args: "deny" if str(denied_marker) in args["command"] else "once"
+        ),
     )
 
     assert agent.chat("go") == "done"
-    assert not marker.exists()  # the denied bash never ran
-    assert (tmp_path / "ok.txt").exists()  # the allowed write did
+    assert not denied_marker.exists()  # the denied bash never ran
+    assert allowed_marker.exists()  # the allowed bash did
     results = {m["tool_call_id"]: m["content"] for m in agent.messages if m.get("role") == "tool"}
     assert "Permission denied" in results["c1"]
-    assert results["c2"].startswith("Wrote")
+    assert results["c2"] == "(no output)"
 
 
 def test_sub_agent_inherits_the_permission_layer(tmp_path):

@@ -7,14 +7,11 @@ and makes edits safe and reviewable.
 """
 
 import difflib
+import typing as t
 from pathlib import Path
-from typing import ClassVar
 
 from ..checkpoints import record as _record_checkpoint
-from .base import Tool
-
-# track files changed this session for /diff
-_changed_files: set[str] = set()
+from .base import Tool, ToolResult
 
 
 class EditFileTool(Tool):
@@ -24,7 +21,7 @@ class EditFileTool(Tool):
         "old_string must appear exactly once in the file for safety. "
         "Include enough surrounding context to ensure uniqueness."
     )
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "file_path": {
@@ -43,7 +40,7 @@ class EditFileTool(Tool):
         "required": ["file_path", "old_string", "new_string"],
     }
 
-    def execute(self, file_path: str, old_string: str, new_string: str) -> str:
+    def execute(self, file_path: str, old_string: str, new_string: str) -> str | ToolResult:  # type: ignore
         try:
             p = Path(file_path).expanduser().resolve()
             if not p.exists():
@@ -67,11 +64,10 @@ class EditFileTool(Tool):
             new_content = content.replace(old_string, new_string, 1)
             _record_checkpoint(p)
             p.write_text(new_content, encoding="utf-8")
-            _changed_files.add(str(p))
 
             # generate a unified diff so the user/LLM can see exactly what changed
             diff = _unified_diff(content, new_content, str(p))
-            return f"Edited {file_path}\n{diff}"
+            return ToolResult(f"Edited {file_path}\n{diff}", changed_files=[str(p)])
         except Exception as e:  # noqa: BLE001
             # boundary: the agent gets an error string, not a traceback
             return f"Error: {e}"

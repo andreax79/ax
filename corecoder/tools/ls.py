@@ -1,7 +1,7 @@
 """Directory listing."""
 
+import typing as t
 from pathlib import Path
-from typing import ClassVar
 
 from ..gitignore import is_ignored, load_project_gitignore
 from .base import Tool
@@ -13,7 +13,7 @@ class LsTool(Tool):
     description = (
         "List files and directories in a path. Shows immediate children, directories first, and honors project .gitignore rules."
     )
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "path": {
@@ -28,7 +28,7 @@ class LsTool(Tool):
         "required": [],
     }
 
-    def execute(self, path: str = ".", limit: int = 200) -> str:
+    def execute(self, path: str = ".", limit: int = 200) -> str:  # type: ignore
         try:
             base = Path(path).expanduser().resolve()
             if not base.exists():

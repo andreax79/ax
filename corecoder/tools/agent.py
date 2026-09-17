@@ -8,7 +8,7 @@ its own context window.
 The sub-agent runs to completion and returns a text summary.
 """
 
-from typing import ClassVar
+import typing as t
 
 from .base import Tool
 
@@ -21,7 +21,7 @@ class AgentTool(Tool):
         "researching a codebase, implementing a multi-step change in isolation, "
         "or any task that would benefit from a fresh context window."
     )
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "task": {
@@ -35,7 +35,7 @@ class AgentTool(Tool):
     # set by Agent.__init__ after construction
     _parent_agent = None
 
-    def execute(self, task: str) -> str:
+    def execute(self, task: str) -> str:  # type: ignore
         if self._parent_agent is None:
             return "Error: agent tool not initialized (no parent agent)"
 

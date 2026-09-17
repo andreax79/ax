@@ -12,7 +12,7 @@ minus `agent`.  Claude Code gives each sub-agent a list of its own; one
 shared list is what lets the whole pattern fit in a file this small.
 """
 
-from typing import ClassVar
+import typing as t
 
 from .base import Tool
 
@@ -28,7 +28,7 @@ class TodoWriteTool(Tool):
         "keep one task in_progress while you work on it, and mark it done the moment it "
         "finishes. The current list is re-shown in the system context every round."
     )
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "tasks": {
@@ -54,18 +54,18 @@ class TodoWriteTool(Tool):
         "required": ["tasks"],
     }
 
-    def __init__(self):
-        self._tasks: list[dict] = []
+    def __init__(self) -> None:
+        self._tasks: list[dict[str, t.Any]] = []
 
-    def execute(self, tasks: list) -> str:
+    def execute(self, tasks: list) -> str:  # type: ignore
         if not isinstance(tasks, list):
             return "Error: tasks must be a list of {content, status} objects"
         checked = []
-        for i, t in enumerate(tasks, 1):
-            content = t.get("content") if isinstance(t, dict) else None
+        for i, task in enumerate(tasks, 1):
+            content = task.get("content") if isinstance(task, dict) else None
             if not isinstance(content, str) or not content.strip():
                 return f"Error: task {i} needs a non-empty 'content' string"
-            status = t.get("status")
+            status = task.get("status")
             if status not in _VALID_STATUS:
                 return f"Error: task {i} has invalid status {status!r} (use pending, in_progress, or done)"
             checked.append({"content": content.strip(), "status": status})

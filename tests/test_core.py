@@ -4,9 +4,10 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from corecoder import LLM, Agent, Config, __version__
+from corecoder import Agent, Config, __version__
 from corecoder import session as session_module
 from corecoder.context import ContextManager, estimate_tokens
+from corecoder.llm import LLM
 from corecoder.project_guidance import MAX_GUIDANCE_CHARS, load_project_guidance
 from corecoder.prompt import system_prompt
 from corecoder.session import list_sessions, load_session, save_session
@@ -258,26 +259,18 @@ def test_list_sessions():
 
 
 def test_edit_tracks_changed_files(tmp_path):
-    from corecoder.tools.edit_file import _changed_files
-
-    _changed_files.clear()
     edit = get_tool("edit_file")
     path = tmp_path / "sample.py"
     path.write_text("aaa\nbbb\n")
-    edit.execute(file_path=str(path), old_string="aaa", new_string="zzz")
-    assert any(str(path) in p for p in _changed_files)
-    _changed_files.clear()
+    result = edit.execute(file_path=str(path), old_string="aaa", new_string="zzz")
+    assert any(str(path) in p for p in result.changed_files)
 
 
 def test_write_tracks_changed_files(tmp_path):
-    from corecoder.tools.edit_file import _changed_files
-
-    _changed_files.clear()
     write = get_tool("write_file")
     path = tmp_path / "tracked.txt"
-    write.execute(file_path=str(path), content="tracked\n")
-    assert any(path.name in p for p in _changed_files)
-    _changed_files.clear()
+    result = write.execute(file_path=str(path), content="tracked\n")
+    assert any(path.name in p for p in result.changed_files)
 
 
 # --- Agent tool execution ---

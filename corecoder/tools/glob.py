@@ -1,7 +1,7 @@
 """File pattern matching."""
 
+import typing as t
 from pathlib import Path
-from typing import ClassVar
 
 from ..gitignore import is_ignored, load_project_gitignore
 from .base import Tool
@@ -11,7 +11,7 @@ class GlobTool(Tool):
     name = "glob"
     read_only = True
     description = "Find files matching a glob pattern. Supports ** for recursive matching (e.g. '**/*.py')."
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "pattern": {
@@ -26,7 +26,7 @@ class GlobTool(Tool):
         "required": ["pattern"],
     }
 
-    def execute(self, pattern: str, path: str = ".") -> str:
+    def execute(self, pattern: str, path: str = ".") -> str:  # type: ignore
         try:
             base = Path(path).expanduser().resolve()
             if not base.exists():

@@ -11,7 +11,7 @@ import os
 import re
 import subprocess
 import threading
-from typing import ClassVar
+import typing as t
 
 from .base import Tool
 
@@ -44,7 +44,7 @@ class BashTool(Tool):
         "Execute a shell command. Returns stdout, stderr, and exit code. "
         "Use this for running tests, installing packages, git operations, etc."
     )
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "command": {
@@ -59,7 +59,7 @@ class BashTool(Tool):
         "required": ["command"],
     }
 
-    def execute(self, command: str, timeout: int = 120) -> str:
+    def execute(self, command: str, timeout: int = 120) -> str:  # type: ignore
         # safety check
         warning = _check_dangerous(command)
         if warning:

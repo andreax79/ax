@@ -2,8 +2,8 @@
 
 import shutil
 import subprocess
+import typing as t
 from pathlib import Path
-from typing import ClassVar
 
 from .base import Tool
 
@@ -14,7 +14,7 @@ class AgTool(Tool):
     name = "ag"
     read_only = True
     description = "Search code using The Silver Searcher (ag). Returns matching lines with file path and line number."
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "pattern": {
@@ -41,7 +41,7 @@ class AgTool(Tool):
         "required": ["pattern"],
     }
 
-    def execute(
+    def execute(  # type: ignore
         self,
         pattern: str,
         path: str = ".",

@@ -1,18 +1,17 @@
 """File and directory move/rename."""
 
+import typing as t
 from pathlib import Path
 from shutil import move
-from typing import ClassVar
 
 from ..checkpoints import record_many as _record_checkpoint
-from .base import Tool
-from .edit_file import _changed_files
+from .base import Tool, ToolResult
 
 
 class MoveFileTool(Tool):
     name = "move_file"
     description = "Move or rename a file or directory. Creates destination parent directories as needed."
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "source": {
@@ -31,7 +30,7 @@ class MoveFileTool(Tool):
         "required": ["source", "destination"],
     }
 
-    def execute(self, source: str, destination: str, overwrite: bool = False) -> str:
+    def execute(self, source: str, destination: str, overwrite: bool = False) -> str | ToolResult:  # type: ignore
         try:
             src = Path(source).expanduser().resolve()
             dst = Path(destination).expanduser().resolve()
@@ -52,9 +51,7 @@ class MoveFileTool(Tool):
             if dst.exists():
                 dst.unlink()
             move(str(src), str(dst))
-            _changed_files.add(str(src))
-            _changed_files.add(str(dst))
             kind = "directory" if dst.is_dir() else "file"
-            return f"Moved {kind} {source} to {destination}"
+            return ToolResult(f"Moved {kind} {source} to {destination}", changed_files=[str(src), str(dst)])
         except Exception as e:  # noqa: BLE001
             return f"Error: {e}"

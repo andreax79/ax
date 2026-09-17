@@ -16,9 +16,8 @@ from .context import ContextManager
 from .llm import LLM, ToolCall
 from .project_guidance import load_project_guidance
 from .prompt import PLAN_MODE_PROMPT, system_prompt
-from .tools import get_tools
+from .tools import Tool, ToolResult, get_tools
 from .tools.agent import AgentTool
-from .tools.base import Tool
 from .tools.todo_write import TodoWriteTool
 from .utils import find_project_root
 
@@ -50,6 +49,7 @@ class Agent:
             guidance_path=str(self.guidance_path) if self.guidance_path else None,
         )
         self.plan_mode = False  # toggled by /plan; while on, mutating tools are refused
+        self.changed_files: set[str] = set()  # track files changed this session for /diff
 
         # wire up sub-agent capability
         for t in self.tools:
@@ -178,7 +178,12 @@ class Agent:
             return f"Error: bad arguments for {tc.name}: {e}"
         # a tool that blows up gets reported back as text, never kills the loop
         try:
-            return tool.execute(**tc.arguments)
+            result = tool.execute(**tc.arguments)
+            if isinstance(result, ToolResult):
+                self.changed_files.update(result.changed_files)
+                return result.output
+            else:
+                return result
         except Exception as e:  # noqa: BLE001
             return f"Error executing {tc.name}: {e}"
 

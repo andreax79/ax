@@ -4,10 +4,10 @@ import logging
 
 from corecoder import Agent
 from corecoder.hooks import Hooks, load_hooks
-from tests.demo import ScriptedLLM
 from corecoder.llm import LLMResponse, ToolCall
 from corecoder.permissions import Permission
 from corecoder.tools import get_tool
+from tests.demo import ScriptedLLM
 
 
 def _write_call(call_id, path):

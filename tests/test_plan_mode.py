@@ -2,9 +2,14 @@
 
 from corecoder import Agent, Config, cli
 from corecoder.llm import LLMResponse, ToolCall
-from tests.demo import ScriptedLLM
 from corecoder.permissions import Permission
 from corecoder.tools import get_tool
+from corecoder.tools.base import ToolResult
+from tests.demo import ScriptedLLM
+
+
+def output(result):
+    return result.output if isinstance(result, ToolResult) else result
 
 
 def _write_call(call_id, path):
@@ -48,6 +53,7 @@ def test_plan_mode_off_lets_the_same_write_through(tmp_path):
 
     assert agent.chat("go") == "here is the plan"
     assert (tmp_path / "a.txt").exists()
+    print(agent.messages)
     assert agent.messages[2]["content"].startswith("Wrote")
 
 

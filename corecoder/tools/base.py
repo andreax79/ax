@@ -1,6 +1,23 @@
 """Base class for all tools."""
 
+import typing as t
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+
+
+@dataclass
+class ToolResult:
+    """Result of a tool execution."""
+
+    output: str
+    changed_files: list[str] = field(default_factory=list)
+
+    @classmethod
+    def to_tool_result(cls, result: t.Union[str, "ToolResult"]) -> "ToolResult":
+        """Convert to ToolResult if not already."""
+        if isinstance(result, ToolResult):
+            return result
+        return ToolResult(output=result)
 
 
 class Tool(ABC):
@@ -8,15 +25,15 @@ class Tool(ABC):
 
     name: str
     description: str
-    parameters: dict  # JSON Schema for the function args
+    parameters: t.ClassVar[dict[str, t.Any]] # JSON Schema for the function args
     read_only: bool = False  # If True, the tool does not modify files
 
     @abstractmethod
-    def execute(self, **kwargs) -> str:
+    def execute(self, **kwargs: dict[str, t.Any]) -> str | ToolResult:
         """Run the tool and return a text result."""
         ...
 
-    def schema(self) -> dict:
+    def schema(self) -> dict[str, t.Any]:
         """OpenAI function-calling schema."""
         return {
             "type": "function",

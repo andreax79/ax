@@ -1,8 +1,8 @@
 """Content search with regex support."""
 
 import re
+import typing as t
 from pathlib import Path
-from typing import ClassVar
 
 from ..gitignore import is_ignored, load_project_gitignore
 from .base import Tool
@@ -15,7 +15,7 @@ class GrepTool(Tool):
     name = "grep"
     read_only = True
     description = "Search file contents with regex. Returns matching lines with file path and line number."
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "pattern": {
@@ -34,7 +34,7 @@ class GrepTool(Tool):
         "required": ["pattern"],
     }
 
-    def execute(self, pattern: str, path: str = ".", include: str | None = None) -> str:
+    def execute(self, pattern: str, path: str = ".", include: str | None = None) -> str:  # type: ignore
         try:
             regex = re.compile(pattern)
         except re.error as e:

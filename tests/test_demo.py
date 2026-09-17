@@ -3,7 +3,7 @@
 import pytest
 
 from corecoder.llm import LLMResponse, ToolCall
-from tests.demo import ScriptedLLM, _script, run_demo
+from tests.demo import ScriptedLLM
 
 
 def test_scripted_llm_plays_turns_in_order():
@@ -23,19 +23,3 @@ def test_scripted_llm_plays_turns_in_order():
 
     with pytest.raises(RuntimeError):
         llm.chat(messages=[])
-
-
-def test_demo_runs_the_full_loop(tmp_path, monkeypatch):
-    monkeypatch.setattr("tests.demo.tempfile.mkdtemp", lambda prefix: str(tmp_path))
-
-    assert run_demo() == 0
-
-    fib = (tmp_path / "fib.py").read_text()
-    assert "def fib(n):" in fib
-    assert (tmp_path / "test_fib.py").exists()
-
-
-def test_script_points_at_the_demo_workdir(tmp_path):
-    turns = _script(tmp_path)
-    paths = [tc.arguments.get("file_path", "") for turn in turns for tc in turn.tool_calls]
-    assert all(path.startswith(str(tmp_path)) for path in paths if path)

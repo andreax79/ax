@@ -1,7 +1,7 @@
 """File reading with line numbers."""
 
+import typing as t
 from pathlib import Path
-from typing import ClassVar
 
 from .base import Tool
 
@@ -10,7 +10,7 @@ class ReadFileTool(Tool):
     name = "read_file"
     read_only = True
     description = "Read a file's contents with line numbers. Always read a file before editing it."
-    parameters: ClassVar[dict] = {
+    parameters: t.ClassVar[dict[str, t.Any]] = {
         "type": "object",
         "properties": {
             "file_path": {
@@ -29,7 +29,7 @@ class ReadFileTool(Tool):
         "required": ["file_path"],
     }
 
-    def execute(self, file_path: str, offset: int = 1, limit: int = 2000) -> str:
+    def execute(self, file_path: str, offset: int = 1, limit: int = 2000) -> str:  # type: ignore
         try:
             p = Path(file_path).expanduser().resolve()
             if not p.exists():
