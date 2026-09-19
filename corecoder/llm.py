@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 
 from openai import APIConnectionError, APIError, APITimeoutError, BadRequestError, OpenAI, RateLimitError  # type: ignore[import]
 
+from .usage_db import UsageDB, UsageTotals
+
 Message = dict[str, t.Any]
 Params = dict[str, t.Any]
 Stream = t.Iterable[t.Any]
@@ -67,6 +69,7 @@ class LLM:
         self.extra = kwargs  # temperature, max_tokens, etc.
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
+        self.usage_db = UsageDB()
 
     def chat(
         self,
@@ -147,6 +150,7 @@ class LLM:
 
         self.total_prompt_tokens += prompt_tok
         self.total_completion_tokens += completion_tok
+        self.usage_db.record_today(self.model, prompt_tok, completion_tok)
 
         return LLMResponse(
             content="".join(content_parts),
@@ -173,6 +177,10 @@ class LLM:
                 else:
                     raise
         raise RuntimeError("unreachable")
+
+    def usage(self) -> t.Iterable[UsageTotals]:
+        """Return the usage"""
+        yield UsageTotals(self.model, self.total_prompt_tokens, self.total_completion_tokens)
 
 
 class LiteLLM(LLM):
@@ -202,6 +210,7 @@ class LiteLLM(LLM):
         self.extra = kwargs
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
+        self.usage_db = UsageDB()
 
     def _call_with_retry(self, params: Params, max_retries: int = 3) -> Stream:
         """Retry on transient errors with exponential backoff via litellm."""

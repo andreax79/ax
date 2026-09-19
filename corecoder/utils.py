@@ -13,6 +13,7 @@ _PROJECT_ROOT_MARKERS = (".git", ".gitignore", "pyproject.toml")
 
 __all__ = [
     "find_project_root",
+    "format_num",
     "is_unix_command",
     "render_tasks",
 ]
@@ -67,9 +68,10 @@ NL_STOPWORDS = {
     "what", "why", "how", "when", "where", "who", "is", "are", "the",
     "a", "an", "please", "can", "could", "would", "should", "do", "does",
     "did", "i", "you", "we", "they", "it", "this", "that", "tell", "explain",
+    "describe", "which", "help", "show", "give",
+    "write", "read", "edit", "fix", "refactor", "test", "run", "build",
 }
 # fmt: on
-
 
 def is_unix_command(s: str, default: bool = False) -> bool:
     """
@@ -132,3 +134,14 @@ def is_unix_command(s: str, default: bool = False) -> bool:
         return False
 
     return default
+
+
+def format_num(size: float, precision: str = "3.1f") -> str:
+    """
+    Format a number into a human-readable string.
+    """
+    for unit in ("", "K", "M", "G", "T"):
+        if abs(size) < 1000 or unit == "T":
+            break
+        size = size / 1000
+    return f"{size:{precision}}{unit}" if unit else str(int(size))

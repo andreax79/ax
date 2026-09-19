@@ -6,6 +6,7 @@ import subprocess
 
 from rich.console import Console  # type: ignore[import]
 from rich.panel import Panel  # type: ignore[import]
+from rich.table import Table  # type: ignore[import]
 
 from .agent import Agent
 from .config import Config
@@ -13,7 +14,8 @@ from .project_guidance import load_project_guidance
 from .prompt import system_prompt
 from .session import list_sessions, save_session
 from .tools.bash import set_cwd
-from .utils import find_project_root
+from .usage_db import UsageDB
+from .utils import find_project_root, format_num
 
 console = Console()
 
@@ -59,10 +61,28 @@ def cmd_model(user_input: str, agent: Agent, config: Config) -> None:
 
 def cmd_tokens(user_input: str, agent: Agent, config: Config) -> None:
     """Handle /tokens command."""
-    p = agent.llm.total_prompt_tokens
-    c = agent.llm.total_completion_tokens
-    line = f"Tokens: [cyan]{p}[/cyan] prompt + [cyan]{c}[/cyan] completion = [bold]{p + c}[/bold] total"
-    console.print(line)
+    usage_db = UsageDB()
+    usages = [
+        ("session", agent.llm.usage()),
+        ("today", usage_db.totals_for_today()),
+        ("month", usage_db.totals_for_month()),
+    ]
+
+    for period, totals in usages:
+        table = Table(title=f"Usage {period}", min_width=60)
+        table.add_column("Model")
+        table.add_column("Input", justify="right", style="cyan")
+        table.add_column("Output", justify="right", style="cyan")
+        table.add_column("Total", justify="right", style="cyan")
+
+        for today in totals:
+            table.add_row(
+                today.model,
+                format_num(today.input_tokens),
+                format_num(today.output_tokens),
+                format_num(today.total_tokens),
+            )
+        console.print(table)
 
 
 def cmd_compact(user_input: str, agent: Agent, config: Config) -> None:
